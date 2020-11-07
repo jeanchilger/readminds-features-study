@@ -58,6 +58,9 @@
 *.wmv
 *.webm
 
+### Bazel ###
+/bazel-*
+
 ### Other ###
 # Private or sensitive data
 private-data/
