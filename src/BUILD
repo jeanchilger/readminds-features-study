@@ -1,0 +1,24 @@
+cc_library(
+    name = "dummy_calculator",
+    srcs = ["dummy_calculator.cc"],
+    deps = [
+        "//mediapipe/framework:calculator_framework",
+        "//mediapipe/framework/port:status",
+    ]
+)
+
+cc_binary(
+    name = "video_capture_runner",
+    srcs = ["video_capture_runner.cc"],
+    deps = [
+        "//src/calculators:video_capture_calculator",
+        "//mediapipe/framework:calculator_graph",
+        "//mediapipe/framework/port:logging",
+        "//mediapipe/framework/port:parse_text_proto",
+        "//mediapipe/framework/port:status",
+        "//mediapipe/framework/port:opencv_imgproc",
+        "//mediapipe/framework/port:commandlineflags",
+        "//mediapipe/framework/port:opencv_highgui",
+        "//mediapipe/framework/formats:image_frame_opencv",
+    ]
+)

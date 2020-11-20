@@ -1,12 +1,15 @@
+#include <stdlib.h>
+
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/formats/image_format.pb.h"
 #include "mediapipe/framework/formats/image_frame.h"
 #include "mediapipe/framework/formats/image_frame_opencv.h"
 #include "mediapipe/framework/formats/video_stream_header.h"
-#include "mediapipe/framework/port/status.h"
-#include "mediapipe/framework/tool/status_util.h"
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
 #include "mediapipe/framework/port/opencv_video_inc.h"
+#include "mediapipe/framework/port/status.h"
+#include "mediapipe/framework/tool/status_util.h"
+
 
 namespace mediapipe {
 
@@ -35,12 +38,21 @@ namespace mediapipe {
 
         public:
             static mediapipe::Status GetContract(CalculatorContract* cc) {
+                
                 cc->InputSidePackets().Tag("FILE_PATH").Set<std::string>();
                 cc->Outputs().Tag("OUTPUT_FRAME").Set<ImageFrame>();
+
+                return mediapipe::OkStatus();
             }
 
-            Status Open(CalculatorContext* cc) override {
-                const std::string& file_path = cc->Inputs().Tag("FILE_PATH").Get<std::string>();
+            mediapipe::Status Open(CalculatorContext* cc) override {
+
+                std::cout << "Call open method" << std::endl;
+
+                const std::string file_path = cc->InputSidePackets().Tag("FILE_PATH").Get<std::string>();
+                
+                std::cout << file_path << std::endl;   
+
                 cap_ = absl::make_unique<cv::VideoCapture>(file_path);
 
                 if (!cap_->isOpened()) {
@@ -48,9 +60,6 @@ namespace mediapipe {
                     << "Fail to open video file at " << file_path;
                 }
 
-                width_ = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_WIDTH));
-                height_ = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_HEIGHT));
-                double fps = static_cast<double>(cap_->get(cv::CAP_PROP_FPS));
                 frame_count_ = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_COUNT));
 
                 cv::Mat frame;
@@ -62,33 +71,25 @@ namespace mediapipe {
                 }
 
                 format_ = GetImageFormat(frame.channels());
+                width_ = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_WIDTH));
+                height_ = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_HEIGHT));
+                
                 if (format_ == ImageFormat::UNKNOWN) {
                     return InvalidArgumentErrorBuilder(MEDIAPIPE_LOC)
                             << "Unsupported video format of the video file at "
                             << file_path;
                 }
 
-                if (fps <= 0 || frame_count_ <= 0 || width_ <= 0 || height_ <= 0) {
-                    return InvalidArgumentErrorBuilder(MEDIAPIPE_LOC)
-                        << "Fail to make video header due to the incorrect metadata from "
-                            "the video file at "
-                        << file_path;
-                }
-                auto header = absl::make_unique<VideoHeader>();
-                header->format = format_;
-                header->width = width_;
-                header->height = height_;
-                header->frame_rate = fps;
-                header->duration = frame_count_ / fps;
-
                 // rewind frame reading to first one
                 cap_->set(cv::CAP_PROP_POS_AVI_RATIO, 0);
 
-                return OkStatus();
+                return ::mediapipe::OkStatus();
             }
 
-            Status Process(CalculatorContext* cc) override {
+            mediapipe::Status Process(CalculatorContext* cc) override {
                 auto image_frame = absl::make_unique<ImageFrame>(format_, width_, height_, 1);
+
+                std::cout << "Call process" << std::endl;
 
                 Timestamp timestamp(cap_->get(cv::CAP_PROP_POS_MSEC) * 1000);
                 if (format_ == ImageFormat::GRAY8) {
@@ -119,9 +120,9 @@ namespace mediapipe {
                     readed_frames_++;
                 }
 
-                return OkStatus();
+                return ::mediapipe::OkStatus();
             }
-            Status Close(CalculatorContext* cc) override {
+            mediapipe::Status Close(CalculatorContext* cc) override {
                 
                 if(cap_ && cap_->isOpened()) {
                     cap_->release();
@@ -132,7 +133,7 @@ namespace mediapipe {
                                  << frame_count_ << " vs decoded frames: " << readed_frames_
                                  << ").";
                 }
-                return OkStatus();
+                return ::mediapipe::OkStatus();
             }
 
         private:
