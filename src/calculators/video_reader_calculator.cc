@@ -10,7 +10,6 @@
 #include "mediapipe/framework/port/status.h"
 #include "mediapipe/framework/tool/status_util.h"
 
-
 namespace mediapipe {
 
     namespace {
@@ -34,12 +33,17 @@ namespace mediapipe {
         }
     }
 
-    class VideoCaptureCalculator : public CalculatorBase {
+    class VideoReaderCalculator : public CalculatorBase {
 
         public:
             static mediapipe::Status GetContract(CalculatorContract* cc) {
                 
-                cc->InputSidePackets().Tag("FILE_PATH").Set<std::string>();
+                /*
+                    Creates a string side_packet for video path
+                    and an ImageFrame ouput stream for frame.
+                */
+
+                cc->InputSidePackets().Tag("VIDEO_FILE_PATH").Set<std::string>();
                 cc->Outputs().Tag("OUTPUT_FRAME").Set<ImageFrame>();
 
                 return mediapipe::OkStatus();
@@ -47,9 +51,7 @@ namespace mediapipe {
 
             mediapipe::Status Open(CalculatorContext* cc) override {
 
-                std::cout << "Call open method" << std::endl;
-
-                const std::string file_path = cc->InputSidePackets().Tag("FILE_PATH").Get<std::string>();
+                const std::string file_path = cc->InputSidePackets().Tag("VIDEO_FILE_PATH").Get<std::string>();
                 
                 std::cout << file_path << std::endl;   
 
@@ -60,7 +62,7 @@ namespace mediapipe {
                     << "Fail to open video file at " << file_path;
                 }
 
-                frame_count_ = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_COUNT));
+                frame_count_ = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_COUNT)) -1;
 
                 cv::Mat frame;
                 cap_->read(frame);
@@ -80,7 +82,6 @@ namespace mediapipe {
                             << file_path;
                 }
 
-                // rewind frame reading to first one
                 cap_->set(cv::CAP_PROP_POS_AVI_RATIO, 0);
 
                 return ::mediapipe::OkStatus();
@@ -88,8 +89,6 @@ namespace mediapipe {
 
             mediapipe::Status Process(CalculatorContext* cc) override {
                 auto image_frame = absl::make_unique<ImageFrame>(format_, width_, height_, 1);
-
-                std::cout << "Call process" << std::endl;
 
                 Timestamp timestamp(cap_->get(cv::CAP_PROP_POS_MSEC) * 1000);
                 if (format_ == ImageFormat::GRAY8) {
@@ -132,6 +131,7 @@ namespace mediapipe {
                     LOG(WARNING) << "Not all the frames are decoded (total frames: "
                                  << frame_count_ << " vs decoded frames: " << readed_frames_
                                  << ").";
+                    return ::mediapipe::OkStatus();
                 }
                 return ::mediapipe::OkStatus();
             }
@@ -146,5 +146,5 @@ namespace mediapipe {
             Timestamp prev_timestamp_ = Timestamp::Unset();
     };
 
-    REGISTER_CALCULATOR(VideoCaptureCalculator);
+    REGISTER_CALCULATOR(VideoReaderCalculator);
 }

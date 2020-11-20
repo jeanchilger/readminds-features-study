@@ -8,10 +8,10 @@ cc_library(
 )
 
 cc_binary(
-    name = "video_capture_runner",
-    srcs = ["video_capture_runner.cc"],
+    name = "video_reader_runner",
+    srcs = ["video_reader_runner.cc"],
     deps = [
-        "//src/calculators:video_capture_calculator",
+        "//src/calculators:video_reader_calculator",
         "//mediapipe/framework:calculator_graph",
         "//mediapipe/framework/port:logging",
         "//mediapipe/framework/port:parse_text_proto",

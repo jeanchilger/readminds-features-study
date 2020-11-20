@@ -1,6 +1,6 @@
 cc_library(
-    name = "video_capture_calculator",
-    srcs = ["video_capture_calculator.cc"],
+    name = "video_reader_calculator",
+    srcs = ["video_reader_calculator.cc"],
     visibility = [
         "//visibility:public"
     ],
