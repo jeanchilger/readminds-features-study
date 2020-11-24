@@ -6,8 +6,9 @@
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
 #include "mediapipe/framework/port/status.h"
 
-//
+#include "src/calculators/gaussian_blur_calculator.pb.h"
 
+//
 namespace mediapipe {
 
 const int KERNEL_SIZE = 15;
@@ -29,9 +30,11 @@ class GaussianBlurCalculator : public CalculatorBase {
         }
 
         mediapipe::Status Open(CalculatorContext* cc) {
-            ksize_ = KERNEL_SIZE;
-            sigma_x_ = SIGMA_X;
-            sigma_y_ = SIGMA_Y;
+            options_ = cc->Options<mediapipe::GaussianBlurCalculatorOptions>();
+
+            ksize_ = options_.has_ksize() ? options_.ksize() : KERNEL_SIZE;
+            sigma_x_ = options_.has_sigma_x() ? options_.sigma_x() : SIGMA_X;
+            sigma_y_ = options_.has_sigma_y() ? options_.sigma_y() : SIGMA_Y;
 
             return mediapipe::OkStatus();
         }
@@ -76,7 +79,8 @@ class GaussianBlurCalculator : public CalculatorBase {
         }
 
     private:
-        // GaussianBlurCalculatorOptions options_;
+        mediapipe::GaussianBlurCalculatorOptions options_;
+
         int ksize_;
         double sigma_x_;
         double sigma_y_;

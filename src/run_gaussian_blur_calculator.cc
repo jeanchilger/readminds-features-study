@@ -10,6 +10,8 @@
 #include "mediapipe/framework/port/parse_text_proto.h"
 #include "mediapipe/framework/port/status.h"
 
+#include "src/calculators/gaussian_blur_calculator.pb.h"
+
 namespace mediapipe {
 
 const std::string file_path = "data/dummy/kodak01.png";
@@ -22,6 +24,13 @@ mediapipe::Status TestGraph() {
             calculator: "GaussianBlurCalculator"
             input_stream: "IMAGE:in"
             output_stream: "IMAGE:out"
+            node_options: {
+                [type.googleapis.com/mediapipe.GaussianBlurCalculatorOptions] {
+                    ksize: 7
+                    sigma_x: 15
+                    sigma_y: 15
+                }
+            }
         }
     )");
 
