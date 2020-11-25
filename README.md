@@ -28,6 +28,6 @@ bazel run --define MEDIAPIPE_DISABLE_GPU=1 \
 ```
 
 ## References
-[1] _Fernando Bevilacqua_. **Game-calibrated and user-tailored remote detection of emotions:  A non-intrusive,  multifactorial camera-based approach for detecting stress and boredom of players in games**. PhD thesis, University of Skövde.
+[1] _Fernando Bevilacqua_. **Game-calibrated and user-tailored remote detection of emotions:  A non-intrusive,  multifactorial camera-based approach for detecting stress and boredom of players in games**. PhD thesis, University of Skövde. ([link](http://his.diva-portal.org/smash/record.jsf?pid=diva2%3A1259426&dswid=6525)).
 
-[2] _Camillo Lugaresi, Jiuqiang Tang, Hadon Nash, Chris McClanahan, Esha Uboweja, Michael Hays, Fan Zhang, Chuo-Ling Chang, Ming Guang Yong, Juhyun Lee, Wan-Teh Chang, Wei Hua,Manfred Georg and Matthias Grundmann_. **MediaPipe: A Framework for Building Perception Pipelines**. Google Research.
+[2] _Camillo Lugaresi, Jiuqiang Tang, Hadon Nash, Chris McClanahan, Esha Uboweja, Michael Hays, Fan Zhang, Chuo-Ling Chang, Ming Guang Yong, Juhyun Lee, Wan-Teh Chang, Wei Hua,Manfred Georg and Matthias Grundmann_. **MediaPipe: A Framework for Building Perception Pipelines**. Google Research. ([link](https://arxiv.org/abs/1906.08172)).
