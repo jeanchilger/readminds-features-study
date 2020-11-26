@@ -7,7 +7,7 @@
 #include "mediapipe/framework/formats/image_frame_opencv.h"
 #include "mediapipe/framework/port/opencv_highgui_inc.h"
 
-const std::string VIDEO_PATH = "data/dummy/leaves_in_the_wind.mp4";
+const std::string VIDEO_PATH = "data/dummy/video_1.mp4";
 
 /*
     Build: 
@@ -15,6 +15,13 @@ const std::string VIDEO_PATH = "data/dummy/leaves_in_the_wind.mp4";
             //src:video_reader_runner --check_visibility=false
     RUN:
         bazel-bin/src/video_reader_runner
+
+    Inputs:
+        VIDEO_STREAM: empty if intents to record from webcam,
+        video file path otherwise
+
+    Ouput:
+        ImageFrame
 */
 
 namespace mediapipe {
@@ -26,13 +33,13 @@ namespace mediapipe {
           output_stream: "out"
           node {
               calculator: "VideoReaderCalculator"
-              input_side_packet: "VIDEO_FILE_PATH:in"
+              input_side_packet: "VIDEO_STREAM:in"
               output_stream: "OUTPUT_FRAME:out"
-          }
+            }
       )");
 
       std::map<std::string, Packet> input_side_packets;
-      input_side_packets["in"] = MakePacket<std::string>(VIDEO_PATH);
+      input_side_packets["in"] = MakePacket<std::string>();
 
       CalculatorGraph graph;
       MP_RETURN_IF_ERROR(graph.Initialize(config, input_side_packets));

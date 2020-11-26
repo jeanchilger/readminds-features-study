@@ -43,7 +43,7 @@ namespace mediapipe {
                     and an ImageFrame ouput stream for frame.
                 */
 
-                cc->InputSidePackets().Tag("VIDEO_FILE_PATH").Set<std::string>();
+                cc->InputSidePackets().Tag("VIDEO_STREAM").Set<std::string>();
                 cc->Outputs().Tag("OUTPUT_FRAME").Set<ImageFrame>();
 
                 return mediapipe::OkStatus();
@@ -51,11 +51,16 @@ namespace mediapipe {
 
             mediapipe::Status Open(CalculatorContext* cc) override {
 
-                const std::string file_path = cc->InputSidePackets().Tag("VIDEO_FILE_PATH").Get<std::string>();
+                const std::string file_path = cc->InputSidePackets().Tag("VIDEO_STREAM").Get<std::string>();
                 
-                std::cout << file_path << std::endl;   
+                if (file_path.empty()){
+                    cap_ = absl::make_unique<cv::VideoCapture>(device_id_, cv::CAP_ANY);
+                    cap_->open(0, cv::CAP_ANY); 
+                }
 
-                cap_ = absl::make_unique<cv::VideoCapture>(file_path);
+                else{
+                    cap_ = absl::make_unique<cv::VideoCapture>(file_path);
+                }
 
                 if (!cap_->isOpened()) {
                     return InvalidArgumentErrorBuilder(MEDIAPIPE_LOC)
@@ -141,6 +146,8 @@ namespace mediapipe {
             int width_;
             int height_;
             int frame_count_;
+            int device_id_ = 0;
+            int api_id_ = cv::CAP_ANY;
             int readed_frames_;
             ImageFormat::Format format_;
             Timestamp prev_timestamp_ = Timestamp::Unset();
