@@ -5,7 +5,7 @@ namespace readminds {
 
 // Simple Calculator implementation, providing an descritive example of
 // MediaPipe's Calculator framework. Inputs and Outputs must match in number.
-// Inputs a sequence of numbers and produces as output the same sequence, 
+// Inputs a sequence of numbers and produces as output the same sequence,
 // added by one.
 class DummyCalculator : public CalculatorBase {
     public:
@@ -39,7 +39,7 @@ class DummyCalculator : public CalculatorBase {
         }
 
         // When all calls to Process() ends, or when all input streams
-        // are closed, the method Close() is called. If Open() was 
+        // are closed, the method Close() is called. If Open() was
         // successfully executed, Close() will be called, even if the run
         // was terminated by an error.
         static mediapipe::Status Close(CalculatorContext* cc) final {
