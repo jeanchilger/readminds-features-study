@@ -1,8 +1,9 @@
 # Readminds Feature Study
-
 Readminds [1] is a software with the capability of remote emotion detection, applied on players in eletronic games. Features like heart rate and facial actions are currently used to estimate a user's emotional state. Whereas these features provide satisfactory results for the method, new ones may furnish a reasonable increase on the overall performance. Therefore, this research addresses that issue, carrying two primary objectives:
 1. Engineer new features aimed at the emotion detection context;
 2. Study the viability of the newly built features in the data used in [1].
+
+The tool chosen to help achieving those goals is [MediaPipe](https://mediapipe.dev/)[2].
 
 ## Getting Started
 All the important (made by us) scripts are within the `src` folder. The other folders are mostly related to MediaPipe configuration.
@@ -27,4 +28,6 @@ bazel run --define MEDIAPIPE_DISABLE_GPU=1 \
 ```
 
 ## References
-[1] _Fernando Bevilacqua_. **Game-calibrated and user-tailored remote detection of emotions:  A non-intrusive,  multifactorial camera-based approach for detecting stress and boredom of players in games**. PhD thesis, University of Skövde.
+[1] _Fernando Bevilacqua_. **Game-calibrated and user-tailored remote detection of emotions:  A non-intrusive,  multifactorial camera-based approach for detecting stress and boredom of players in games**. PhD thesis, University of Skövde. ([link](http://his.diva-portal.org/smash/record.jsf?pid=diva2%3A1259426&dswid=6525)).
+
+[2] _Camillo Lugaresi, Jiuqiang Tang, Hadon Nash, Chris McClanahan, Esha Uboweja, Michael Hays, Fan Zhang, Chuo-Ling Chang, Ming Guang Yong, Juhyun Lee, Wan-Teh Chang, Wei Hua,Manfred Georg and Matthias Grundmann_. **MediaPipe: A Framework for Building Perception Pipelines**. Google Research. ([link](https://arxiv.org/abs/1906.08172)).
