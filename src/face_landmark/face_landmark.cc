@@ -1,4 +1,10 @@
 // Gets an image and outputs the face landmarks.
+//
+// Build:
+//      bazel build --define MEDIAPIPE_DISABLE_GPU --nocheck_visibility //src/face_landmark:face_landmark
+//
+// Run:
+//      bazel-bin/src/face_landmark/face_landmark --input_image_path=path/to/image.jpg
 
 #include <cstdlib>
 #include <iostream>
@@ -16,6 +22,17 @@
 
 DEFINE_string(input_image_path, "",
               "Path to the image.");
+
+// std::string FACE_LANDMARK_FILE_PATH = "";
+
+
+//
+// ::mediapipe::Status RunGraph() {
+    // std::string face_landmark_graph_contents;
+
+    // MP_RETURN_IF_ERROR(mediapipe::file::GetContents(
+    //     FACE_LANDMARK_FILE_PATH, &calculator_graph_config_contents));
+// }
 
 
 

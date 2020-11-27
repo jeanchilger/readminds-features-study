@@ -2,6 +2,7 @@ cc_binary(
     name = "face_landmark",
     srcs = ["face_landmark.cc"],
     deps = [
+        "//mediapipe/modules/face_landmark:face_landmark_front_cpu",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/formats:image_frame",
         "//mediapipe/framework/formats:image_frame_opencv",
