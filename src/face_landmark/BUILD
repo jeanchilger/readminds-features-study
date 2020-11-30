@@ -1,6 +1,6 @@
 cc_binary(
-    name = "face_landmark",
-    srcs = ["face_landmark.cc"],
+    name = "landmark_points",
+    srcs = ["landmark_points.cc"],
     deps = [
         "//mediapipe/modules/face_landmark:face_landmark_front_cpu",
         "//mediapipe/framework:calculator_framework",

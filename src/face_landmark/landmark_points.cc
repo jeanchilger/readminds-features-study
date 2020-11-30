@@ -1,10 +1,10 @@
 // Gets an image and outputs the face landmarks.
 //
 // Build:
-//      bazel build --define MEDIAPIPE_DISABLE_GPU --nocheck_visibility //src/face_landmark:face_landmark
+//      bazel build --define MEDIAPIPE_DISABLE_GPU --nocheck_visibility //src/face_landmark:landmark_points
 //
 // Run:
-//      bazel-bin/src/face_landmark/face_landmark --input_image_path=path/to/image.jpg
+//      bazel-bin/src/face_landmark/landmark_points --input_image_path=path/to/image.jpg
 
 #include <cstdlib>
 #include <iostream>
@@ -25,6 +25,15 @@
 
 DEFINE_string(input_image_path, "",
               "Path to the image.");
+
+DEFINE_bool(split_landmarks, false,
+            "Whether or not to split landmarks on more than one image.");
+
+DEFINE_bool(show_image, false,
+            "Whether ot not to show the (result) image on the screen.");
+
+DEFINE_bool(save_image, true,
+            "Whether or not to save the final image.");
 
 //
 mediapipe::Status RunGraph() {
@@ -53,14 +62,13 @@ mediapipe::Status RunGraph() {
     // read input image 
     cv::Mat raw_image = cv::imread(FLAGS_input_image_path);
 
-    // cv::resize(raw_image, raw_image, cv::Size(), 0.2, 0.2);
-
     // wrap cv::Mat into a ImageFrame
     auto input_frame = std::make_unique<mediapipe::ImageFrame>(
         mediapipe::ImageFormat::SRGB,
         raw_image.cols,
         raw_image.rows
     );
+    
     
     cv::Mat input_frame_mat = mediapipe::formats::MatView(input_frame.get());
 
@@ -85,7 +93,6 @@ mediapipe::Status RunGraph() {
 
     // gets graph output
     mediapipe::Packet output_packet;
-
     
     if (!poller.Next(&output_packet)) return mediapipe::OkStatus();
 
@@ -96,27 +103,65 @@ mediapipe::Status RunGraph() {
     mediapipe::NormalizedLandmarkList face_landmarks = output_landmark_vector[0];
     double x, y;
 
-    for (int j=1; j <= 18; j++){
+    int outter_end = 1;
+    if (FLAGS_split_landmarks) {
+        outter_end = 18;
+    }
+
+    for (int j=1; j <= outter_end; j++) {
+
+        int inner_end = 468;
+        if (FLAGS_split_landmarks) {
+            inner_end = j * 26;
+        }
 
         cv::Mat landmark_dst;
         raw_image.copyTo(landmark_dst);
 
-        for (int i=(j-1) * 26; i < j * 26 - 1; i++) {
+        for (int i=(j - 1) * 26; i < inner_end - 1; i++) {
             const mediapipe::NormalizedLandmark landmark = face_landmarks.landmark(i);
 
             x = (int) floor(landmark.x() * width);
             y = (int) floor(landmark.y() * height);
 
-            cv::circle(landmark_dst, cv::Point(x, y), 10, cv::Scalar(255, 0, 0), -1, 8);
-            cv::putText(landmark_dst, std::to_string(i), cv::Point(x, y), cv::FONT_HERSHEY_DUPLEX, 0.6, cv::Scalar(0,0,255));
+            cv::circle(
+                landmark_dst,
+                cv::Point(x, y),
+                10,
+                cv::Scalar(255, 0, 0),
+                -1,
+                8
+            );
 
-            cv::imwrite(FLAGS_input_image_path+std::to_string(j)+".jpg", landmark_dst);
-            
+            cv::putText(
+                landmark_dst,
+                std::to_string(i),
+                cv::Point(x, y),
+                cv::FONT_HERSHEY_DUPLEX,
+                0.6,
+                cv::Scalar(0, 0, 255));
+
+            if (FLAGS_save_image) {
+                cv::imwrite(
+                    FLAGS_input_image_path + std::to_string(j) + ".jpg",
+                    landmark_dst
+                );
+            }
         }
 
+        // if show image
+        if (FLAGS_show_image) {
+            cv::Mat resized_image;
+            cv::resize(landmark_dst, resized_image, cv::Size(), 0.2, 0.2);
+            
+            cv::imshow("Output Image", resized_image);
+            cv::waitKey(0);
+            cv::destroyAllWindows();
+        }
     }
     
     MP_RETURN_IF_ERROR(graph.CloseInputStream("input_image"));
+
     return graph.WaitUntilDone();
 }
 
@@ -124,12 +169,9 @@ mediapipe::Status RunGraph() {
 int main(int argc, char** argv) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    std::cout << FLAGS_input_image_path << std::endl;
-
     mediapipe::Status output_status = RunGraph();
 
     std::cout << output_status.message() << std::endl;
-
 
     return EXIT_SUCCESS;
 }
