@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <vector>
+#include <cmath>
 
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/formats/image_frame.h"
@@ -31,7 +32,7 @@ mediapipe::Status RunGraph() {
     mediapipe::CalculatorGraphConfig config = 
             mediapipe::ParseTextProtoOrDie<mediapipe::CalculatorGraphConfig>(R"(
                 input_stream: "IMAGE:input_image"
-                output_stream: "LANDMARKS:multi_face_landmarks"
+                output_stream: "LANDMARKS:multi_face_landmarks" 
                 node: {
                     calculator: "FaceLandmarkFrontCpu"
                     input_stream: "IMAGE:input_image"
@@ -52,13 +53,25 @@ mediapipe::Status RunGraph() {
     // read input image 
     cv::Mat raw_image = cv::imread(FLAGS_input_image_path);
 
+    // cv::resize(raw_image, raw_image, cv::Size(), 0.2, 0.2);
+
     // wrap cv::Mat into a ImageFrame
     auto input_frame = std::make_unique<mediapipe::ImageFrame>(
         mediapipe::ImageFormat::SRGB,
         raw_image.cols,
         raw_image.rows
     );
+    
     cv::Mat input_frame_mat = mediapipe::formats::MatView(input_frame.get());
+
+    cv::cvtColor(raw_image, raw_image, cv::COLOR_BGR2RGB);
+
+    int width = input_frame_mat.size().width;
+    int height = input_frame_mat.size().height;
+
+    std::cout << width << std::endl;
+    std::cout << height << std::endl;
+
     raw_image.copyTo(input_frame_mat);
 
     // send input ImageFrame to graph
@@ -67,6 +80,8 @@ mediapipe::Status RunGraph() {
         mediapipe::Adopt(input_frame.release())
             .At(mediapipe::Timestamp(0))
     ));
+
+    cv::cvtColor(raw_image, raw_image, cv::COLOR_RGB2BGR);
 
     // gets graph output
     mediapipe::Packet output_packet;
@@ -79,19 +94,27 @@ mediapipe::Status RunGraph() {
             output_packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
 
     mediapipe::NormalizedLandmarkList face_landmarks = output_landmark_vector[0];
+    double x, y;
 
-    for (int i=0; i < face_landmarks.landmark_size(); i++) {
-        const mediapipe::NormalizedLandmark landmark = face_landmarks.landmark(i);
+    for (int j=1; j <= 18; j++){
 
-        std::cout << "x: " << landmark.x()
-                    << " y: " << landmark.y()
-                    << " z: " << landmark.z()
-                    << std::endl;
+        cv::Mat landmark_dst;
+        raw_image.copyTo(landmark_dst);
+
+        for (int i=(j-1) * 26; i < j * 26 - 1; i++) {
+            const mediapipe::NormalizedLandmark landmark = face_landmarks.landmark(i);
+
+            x = (int) floor(landmark.x() * width);
+            y = (int) floor(landmark.y() * height);
+
+            cv::circle(landmark_dst, cv::Point(x, y), 10, cv::Scalar(255, 0, 0), -1, 8);
+            cv::putText(landmark_dst, std::to_string(i), cv::Point(x, y), cv::FONT_HERSHEY_DUPLEX, 0.6, cv::Scalar(0,0,255));
+
+            cv::imwrite(FLAGS_input_image_path+std::to_string(j)+".jpg", landmark_dst);
+            
+        }
+
     }
-
-    // cv::imshow("Window Name", raw_image);
-    // cv::waitKey(0);
-    // cv::destroyAllWindows();
     
     MP_RETURN_IF_ERROR(graph.CloseInputStream("input_image"));
     return graph.WaitUntilDone();
