@@ -1,9 +1,9 @@
-# Readminds Feature Study
+# Readminds Features Study
 Readminds [1] is a software with the capability of remote emotion detection, applied on players in eletronic games. Features like heart rate and facial actions are currently used to estimate a user's emotional state. Whereas these features provide satisfactory results for the method, new ones may furnish a reasonable increase on the overall performance. Therefore, this research addresses that issue, carrying two primary objectives:
 1. Engineer new features aimed at the emotion detection context;
 2. Study the viability of the newly built features in the data used in [1].
 
-The tool chosen to help achieving those goals is [MediaPipe](https://mediapipe.dev/)[2].
+The tool chosen to help achieving those goals is [MediaPipe](https://mediapipe.dev/) [2].
 
 ## Getting Started
 All the important (made by us) scripts are within the `src` folder. The other folders are mostly related to MediaPipe configuration.
