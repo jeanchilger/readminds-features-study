@@ -1,0 +1,18 @@
+cc_binary(
+    name = "feature_extractor_single_image",
+    srcs = ["feature_extractor_single_image.cc"],
+    deps = [
+        "//src/features/mouth:mouth",
+        "//mediapipe/modules/face_landmark:face_landmark_front_cpu",
+        "//mediapipe/framework:calculator_framework",
+        "//mediapipe/framework/formats:image_frame",
+        "//mediapipe/framework/formats:image_frame_opencv",
+        "//mediapipe/framework/port:commandlineflags",
+        "//mediapipe/framework/port:file_helpers",
+        "//mediapipe/framework/port:opencv_highgui",
+        "//mediapipe/framework/port:opencv_imgproc",
+        "//mediapipe/framework/port:opencv_video",
+        "//mediapipe/framework/port:parse_text_proto",
+        "//mediapipe/framework/port:status",
+    ],
+)
