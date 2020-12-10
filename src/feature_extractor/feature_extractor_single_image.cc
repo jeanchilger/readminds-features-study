@@ -1,10 +1,10 @@
 // Gets an image and outputs the face landmarks.
 //
 // Build:
-//      bazel build --define MEDIAPIPE_DISABLE_GPU --nocheck_visibility //src/feature_extractor:feature_extractor_single_image
+//      bazel build --define MEDIAPIPE_DISABLE_GPU=1 --nocheck_visibility //src/feature_extractor:feature_extractor_single_image
 //
 // Run:
-//      bazel-bin/src/feature_extractor:feature_extractor_single_image --input_image_path=path/to/image.jpg
+//      bazel-bin/src/feature_extractor/feature_extractor_single_image --input_image_path=path/to/image.jpg
 
 #include <cstdlib>
 #include <iostream>
@@ -101,7 +101,16 @@ mediapipe::Status RunGraph() {
 
     mediapipe::NormalizedLandmarkList face_landmarks = output_landmark_vector[0];
     
+    // ===========================
     // Do feature processing here
+    // ===========================
+
+    Mouth mouth_descirptor(face_landmarks, width, height);
+
+    double f1 = mouth_descirptor.Area();
+
+    std::cout << f1 << std::endl;
+
     
     MP_RETURN_IF_ERROR(graph.CloseInputStream("input_image"));
 
