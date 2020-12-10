@@ -1,5 +1,5 @@
-#ifndef _EYE_H_
-#define _EYE_H_
+#ifndef _READMINDS_EYE_H_
+#define _READMINDS_EYE_H_
 
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
@@ -18,9 +18,9 @@ private:
     std::vector<cv::Point> eye_left_contour_;
     int img_width_, img_height_;
 
-    cv::Point cvt_norm_into_cv_point_(mediapipe::NormalizedLandmark lmark);
-    void generate_eye_contours_(int right_eye_lmarks[], int left_eye_lmarks);
-    int compute_eyes_contours_area_();
+    cv::Point CvtNormIntoCvPoint_(mediapipe::NormalizedLandmark lmark);
+    void GenerateEyeContours_(int right_eye_lmarks[], int left_eye_lmarks);
+    int ComputeEyesContoursArea_();
 
 public:
     static const int EYE_RIGHT_INNER_LMARKS[] = {
@@ -35,8 +35,7 @@ public:
         398, 466, 463
     };
 
-    void set_image_dimentions(int width, int height);
-    void set_lmark_list(mediapipe::NormalizedLandmark list);
-    int  eye_inner_area();
+    void SetLandmarks(mediapipe::NormalizedLandmark list);
+    int  EyeInnerArea();
 };
 #endif
