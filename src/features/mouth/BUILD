@@ -6,7 +6,7 @@ cc_library(
         "//visibility:public",
     ],
     deps = [
-        "//mediapipe/framework/port:opencv_core",
+        "//mediapipe/framework/formats:landmark_cc_proto",
         "//mediapipe/framework/port:opencv_imgproc",
     ],
     alwayslink = 1,

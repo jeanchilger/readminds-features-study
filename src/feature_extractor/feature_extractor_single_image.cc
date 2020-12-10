@@ -1,10 +1,10 @@
 // Gets an image and outputs the face landmarks.
 //
 // Build:
-//      bazel build --define MEDIAPIPE_DISABLE_GPU --nocheck_visibility //src/feature_extractor:feature_extractor_single_image
+//      bazel build --define MEDIAPIPE_DISABLE_GPU=1 --nocheck_visibility //src/feature_extractor:feature_extractor_single_image
 //
 // Run:
-//      bazel-bin/src/feature_extractor:feature_extractor_single_image --input_image_path=path/to/image.jpg
+//      bazel-bin/src/feature_extractor/feature_extractor_single_image --input_image_path=path/to/image.jpg
 
 #include <cstdlib>
 #include <iostream>
