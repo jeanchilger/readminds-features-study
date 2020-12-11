@@ -2,6 +2,7 @@
 #define _READMINDS_MOUTH_H_
 
 #include "mediapipe/framework/formats/landmark.pb.h"
+#include "src/features/face_analyzer.h"
 
 // Class that wraps mouth-related features.
 //
@@ -16,7 +17,7 @@ const int MOUTH_LOWER_LIP[] = {
     321, 375,
 };
 
-class Mouth {
+class Mouth: public FaceAnalyzer {
 
     public:
         Mouth(int img_width, int img_height);
@@ -24,18 +25,15 @@ class Mouth {
         Mouth(mediapipe::NormalizedLandmarkList landmarks, 
               int img_width, int img_height);
 
-        // landmarks_ setter
-        void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);
-
         // Get the area of the mouth. Area is calculated using OpenCV's contourArea().
         // The mouth shape is defined as a combination of all outer points of the
         // upper and the lower lip.
         double Area();
 
     private:
-        int img_width_;
-        int img_height_;
-        mediapipe::NormalizedLandmarkList landmarks_;
+        // int img_width_;
+        // int img_height_;
+        // mediapipe::NormalizedLandmarkList landmarks_;
 
         double m_area_;
 

@@ -5,24 +5,19 @@
 #include "mediapipe/framework/port/opencv_core_inc.h"
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
 
-Mouth::Mouth(int img_width, int img_height) {
-    img_width_ = img_width;
-    img_height_ = img_height;
-}
+Mouth::Mouth(int img_width, int img_height)
+    : FaceAnalyzer(img_width, img_height) {}
 
 Mouth::Mouth(mediapipe::NormalizedLandmarkList landmarks, 
-              int img_width, int img_height) {
-    img_width_ = img_width;
-    img_height_ = img_height;
-
-    SetLandmarks(landmarks);
+              int img_width, int img_height)
+                    : FaceAnalyzer{ landmarks, img_width, img_height } {
     UpdateMouthArea();
 }
 
-void Mouth::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
-    landmarks_ = landmarks;
-    UpdateMouthArea();
-}
+// void Mouth::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
+//     landmarks_ = landmarks;
+//     UpdateMouthArea();
+// }
 
 double Mouth::Area() {
     return m_area_;
