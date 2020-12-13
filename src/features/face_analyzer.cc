@@ -1,3 +1,6 @@
+#include <cmath>
+#include <iostream>
+
 #include "src/features/face_analyzer.h"
 
 FaceAnalyzer::FaceAnalyzer(int img_width, int img_height) {
@@ -15,8 +18,39 @@ FaceAnalyzer::FaceAnalyzer(mediapipe::NormalizedLandmarkList landmarks,
 
 void FaceAnalyzer::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
     landmarks_ = landmarks;
+
+    SetNormFactor();
 }
 
 double FaceAnalyzer::EuclideanDistance(cv::Point a, cv::Point b) {
+    cv::Point diff = a - b;
 
+    return std::sqrt(diff.x * diff.x + diff.y * diff.y);
+}
+
+double FaceAnalyzer::EuclideanDistance(
+        double x1, 
+        double y1, 
+        double x2, 
+        double y2) {
+
+    return std::sqrt(x1 * x2 + y1 * y2);
+}
+
+void FaceAnalyzer::SetNormFactor() {
+    mediapipe::NormalizedLandmark first_anchor = 
+            landmarks_.landmark(ANCHOR_LANDMARKS[0]);
+
+    int last_anchor_idx = sizeof(ANCHOR_LANDMARKS) / 
+            sizeof(*ANCHOR_LANDMARKS) - 1;
+    mediapipe::NormalizedLandmark last_anchor = 
+            landmarks_.landmark(ANCHOR_LANDMARKS[last_anchor_idx]);
+
+    norm_factor_ = EuclideanDistance(
+            cv::Point(
+                    (int) floor(first_anchor.x() * img_width_),
+                    (int) floor(first_anchor.y() * img_height_)),
+            cv::Point(
+                    (int) floor(last_anchor.x() * img_width_),
+                    (int) floor(last_anchor.y() * img_height_)));
 }

@@ -1,8 +1,6 @@
 #ifndef _READMINDS_FEATURES_FACE_H_
 #define _READMINDS_FEATURES_FACE_H_
 
-#include <cmath>
-
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "mediapipe/framework/port/opencv_core_inc.h"
 
@@ -22,10 +20,6 @@ class FaceAnalyzer {
 
         // ~FaceAnalyzer();
 
-        // Implements the euclidean distance between
-        // two cv::Points
-        double EuclideanDistance(cv::Point a, cv::Point b);
-
         // landmarks_ setter
         void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);
 
@@ -35,6 +29,16 @@ class FaceAnalyzer {
         mediapipe::NormalizedLandmarkList landmarks_;
         int img_width_;
         int img_height_;
+
+        // Implements the euclidean distance between
+        // two cv::Points
+        double EuclideanDistance(cv::Point a, cv::Point b);
+        
+        double EuclideanDistance(double x1, double y1, double x2, double y2);
+
+        // Updates the normalize factor with landmars value
+        void SetNormFactor();
+
 };
 
 #endif

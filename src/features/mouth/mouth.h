@@ -25,20 +25,28 @@ class Mouth: public FaceAnalyzer {
         Mouth(mediapipe::NormalizedLandmarkList landmarks, 
               int img_width, int img_height);
 
+        // landmarks_ setter
+        void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);
+
         // Get the area of the mouth. Area is calculated using OpenCV's contourArea().
         // The mouth shape is defined as a combination of all outer points of the
         // upper and the lower lip.
         double Area();
 
-    private:
-        // int img_width_;
-        // int img_height_;
-        // mediapipe::NormalizedLandmarkList landmarks_;
+        // Gets the sum of the distances between mouth contour landmarks and 
+        // Anchor landmarks. This sum is normalized by the K factor.
+        double GetMouthOuter();
 
+    private:
         double m_area_;
+        double m_mouth_outer_;
 
         // Calculates the area of the mouth. 
         void UpdateMouthArea();
+
+        // Calculates the distances between mouth outer landmarks and 
+        // anchor landmarks.
+        void UpdateMouthOuter();
 
 };
 

@@ -106,7 +106,7 @@ mediapipe::Status RunGraph() {
     // ===========================
     Mouth mouth_descriptor(face_landmarks, width, height);
 
-    double f1 = mouth_descriptor.Area();
+    double f1 = mouth_descriptor.GetMouthOuter();
     std::cout << f1 << std::endl;
 
     
