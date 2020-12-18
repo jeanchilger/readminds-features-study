@@ -17,6 +17,10 @@ const int MOUTH_LOWER_LIP[] = {
     321, 375,
 };
 
+const int MOUTH_CORNERS[] = {
+    57, 287,
+};
+
 class Mouth: public FaceAnalyzer {
 
     public:
@@ -34,12 +38,20 @@ class Mouth: public FaceAnalyzer {
         double Area();
 
         // Gets the sum of the distances between mouth contour landmarks and 
-        // Anchor landmarks. This sum is normalized by the K factor.
+        // Anchor landmarks. The sum is normalized by the K factor.
         double GetMouthOuter();
+        
+        // Gets the sum of distances between mouth corner landmarks and
+        // Anchor landmarks. The sum is normalized by the K factor.
+        double GetMouthCorner();
 
     private:
         double m_area_;
         double m_mouth_outer_;
+        double m_mouth_corner_;
+
+        // Calls all uptade functions.
+        void Update();
 
         // Calculates the area of the mouth. 
         void UpdateMouthArea();
@@ -47,6 +59,10 @@ class Mouth: public FaceAnalyzer {
         // Calculates the distances between mouth outer landmarks and 
         // anchor landmarks.
         void UpdateMouthOuter();
+        
+        // Calculates the distances between mouth corner landmarks 
+        // and anchor landmarks.
+        void UpdateMouthCorner();
 
 };
 

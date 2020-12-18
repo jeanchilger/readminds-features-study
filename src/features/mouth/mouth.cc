@@ -11,23 +11,31 @@ Mouth::Mouth(int img_width, int img_height)
 Mouth::Mouth(mediapipe::NormalizedLandmarkList landmarks, 
               int img_width, int img_height)
                     : FaceAnalyzer{ landmarks, img_width, img_height } {
-    UpdateMouthArea();
-    UpdateMouthOuter();
+    Update();
 }
 
 void Mouth::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
     FaceAnalyzer::SetLandmarks(landmarks);
 
-    UpdateMouthArea();
-    UpdateMouthOuter();
+    Update();
 }
 
 double Mouth::GetMouthOuter() {
     return m_mouth_outer_;
 }
 
+double Mouth::GetMouthCorner() {
+    return m_mouth_corner_;
+}
+
 double Mouth::Area() {
     return m_area_;
+}
+
+void Mouth::Update() {
+    UpdateMouthArea();
+    UpdateMouthOuter();
+    UpdateMouthCorner();
 }
 
 void Mouth::UpdateMouthArea() {
@@ -78,4 +86,28 @@ void Mouth::UpdateMouthOuter() {
 
     m_mouth_outer_ = distances_sum / norm_factor_;
 
+}
+
+void Mouth::UpdateMouthCorner() {
+    double distances_sum = 0;
+
+    double anchor_x, anchor_y, x, y;
+    for (int a : ANCHOR_LANDMARKS) {
+        mediapipe::NormalizedLandmark anchor_landmark = landmarks_.landmark(a);
+        
+        anchor_x = anchor_landmark.x() * img_width_;
+        anchor_y = anchor_landmark.y() * img_height_;
+
+        for (int i : MOUTH_CORNERS) {
+            mediapipe::NormalizedLandmark landmark = landmarks_.landmark(i);
+
+            x = landmark.x() * img_width_;
+            y = landmark.y() * img_height_;
+
+            distances_sum += EuclideanDistance(anchor_x, anchor_y, x, y);
+
+        }
+    }
+
+    m_mouth_corner_ = distances_sum / norm_factor_;
 }
