@@ -101,15 +101,19 @@ mediapipe::Status RunGraph() {
 
     mediapipe::NormalizedLandmarkList face_landmarks = output_landmark_vector[0];
     
+    Mouth mouth_descriptor(face_landmarks, width, height);
+
     // ===========================
-    // Do feature processing here
+    // F1
     // ===========================
-
-    Mouth mouth_descirptor(face_landmarks, width, height);
-
-    double f1 = mouth_descirptor.Area();
-
+    double f1 = mouth_descriptor.GetMouthOuter();
     std::cout << f1 << std::endl;
+
+    // ===========================
+    // F2
+    // ===========================
+    double f2 = mouth_descriptor.GetMouthCorner();
+    std::cout << f2 << std::endl;
 
     
     MP_RETURN_IF_ERROR(graph.CloseInputStream("input_image"));

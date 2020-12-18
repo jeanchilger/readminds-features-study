@@ -2,6 +2,7 @@
 #define _READMINDS_MOUTH_H_
 
 #include "mediapipe/framework/formats/landmark.pb.h"
+#include "src/features/face_analyzer.h"
 
 // Class that wraps mouth-related features.
 //
@@ -16,7 +17,11 @@ const int MOUTH_LOWER_LIP[] = {
     321, 375,
 };
 
-class Mouth {
+const int MOUTH_CORNERS[] = {
+    57, 287,
+};
+
+class Mouth: public FaceAnalyzer {
 
     public:
         Mouth(int img_width, int img_height);
@@ -32,15 +37,32 @@ class Mouth {
         // upper and the lower lip.
         double Area();
 
-    private:
-        int img_width_;
-        int img_height_;
-        mediapipe::NormalizedLandmarkList landmarks_;
+        // Gets the sum of the distances between mouth contour landmarks and 
+        // Anchor landmarks. The sum is normalized by the K factor.
+        double GetMouthOuter();
+        
+        // Gets the sum of distances between mouth corner landmarks and
+        // Anchor landmarks. The sum is normalized by the K factor.
+        double GetMouthCorner();
 
+    private:
         double m_area_;
+        double m_mouth_outer_;
+        double m_mouth_corner_;
+
+        // Calls all uptade functions.
+        void Update();
 
         // Calculates the area of the mouth. 
         void UpdateMouthArea();
+
+        // Calculates the distances between mouth outer landmarks and 
+        // anchor landmarks.
+        void UpdateMouthOuter();
+        
+        // Calculates the distances between mouth corner landmarks 
+        // and anchor landmarks.
+        void UpdateMouthCorner();
 
 };
 
