@@ -23,6 +23,7 @@
 #include "mediapipe/framework/port/parse_text_proto.h"
 #include "mediapipe/framework/port/status.h"
 
+#include "src/features/eye/eye.h"
 #include "src/features/mouth/mouth.h"
 
 DEFINE_string(input_image_path, "",
@@ -101,6 +102,7 @@ mediapipe::Status RunGraph() {
 
     mediapipe::NormalizedLandmarkList face_landmarks = output_landmark_vector[0];
     
+    Eye eye_descriptor(face_landmarks, width, height);
     Mouth mouth_descriptor(face_landmarks, width, height);
 
     // ===========================
@@ -115,6 +117,11 @@ mediapipe::Status RunGraph() {
     double f2 = mouth_descriptor.GetMouthCorner();
     std::cout << f2 << std::endl;
 
+    // ===========================
+    // F3
+    // ===========================
+    double f3 = eye_descriptor.GetEyeInnerArea();
+    std::cout << f3 << std::endl;
     
     MP_RETURN_IF_ERROR(graph.CloseInputStream("input_image"));
 

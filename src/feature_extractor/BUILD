@@ -2,6 +2,7 @@ cc_binary(
     name = "feature_extractor_single_image",
     srcs = ["feature_extractor_single_image.cc"],
     deps = [
+        "//src/features/eye:eye",
         "//src/features/mouth:mouth",
         "//mediapipe/modules/face_landmark:face_landmark_front_cpu",
         "//mediapipe/framework:calculator_framework",
