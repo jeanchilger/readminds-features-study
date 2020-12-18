@@ -2,7 +2,7 @@
 #define _READMINDS_MOUTH_H_
 
 #include "mediapipe/framework/formats/landmark.pb.h"
-#include "src/features/face_analyzer.h"
+#include "src/features/generic_analyzer.h"
 
 // Class that wraps mouth-related features.
 //
@@ -21,7 +21,7 @@ const int MOUTH_CORNERS[] = {
     57, 287,
 };
 
-class Mouth: public FaceAnalyzer {
+class Mouth: public GenericAnalyzer {
 
     public:
         Mouth(int img_width, int img_height);
