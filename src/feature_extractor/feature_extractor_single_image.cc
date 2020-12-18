@@ -23,7 +23,8 @@
 #include "mediapipe/framework/port/parse_text_proto.h"
 #include "mediapipe/framework/port/status.h"
 
-#include "src/features/mouth/mouth.h"
+#include "src/features/face/face_analyzer.h"
+#include "src/features/mouth/mouth_analyzer.h"
 
 DEFINE_string(input_image_path, "",
               "Path to the image.");
@@ -101,7 +102,9 @@ mediapipe::Status RunGraph() {
 
     mediapipe::NormalizedLandmarkList face_landmarks = output_landmark_vector[0];
     
-    Mouth mouth_descriptor(face_landmarks, width, height);
+    // Instantiate analyzers
+    MouthAnalyzer mouth_descriptor(face_landmarks, width, height);
+    FaceAnalyzer face_descriptor(face_landmarks, width, height);
 
     // ===========================
     // F1
@@ -114,6 +117,12 @@ mediapipe::Status RunGraph() {
     // ===========================
     double f2 = mouth_descriptor.GetMouthCorner();
     std::cout << f2 << std::endl;
+
+    // ===========================
+    // F5
+    // ===========================
+    double f5 = face_descriptor.GetFaceArea();
+    std::cout << f5 << std::endl;
 
     
     MP_RETURN_IF_ERROR(graph.CloseInputStream("input_image"));

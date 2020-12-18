@@ -4,9 +4,6 @@
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "src/features/generic_analyzer.h"
 
-// Class that wraps mouth-related features.
-//
-
 const int MOUTH_UPPER_LIP[] = {
     61, 185, 40, 39, 37, 0, 267, 269,
     270, 409, 291,
@@ -21,12 +18,14 @@ const int MOUTH_CORNERS[] = {
     57, 287,
 };
 
-class Mouth: public GenericAnalyzer {
+// Class that wraps mouth-related features.
+//
+class MouthAnalyzer: public GenericAnalyzer {
 
     public:
-        Mouth(int img_width, int img_height);
+        MouthAnalyzer(int img_width, int img_height);
 
-        Mouth(mediapipe::NormalizedLandmarkList landmarks, 
+        MouthAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
               int img_width, int img_height);
 
         // landmarks_ setter
