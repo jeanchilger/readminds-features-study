@@ -1,44 +1,44 @@
-#include "src/features/mouth/mouth.h"
+#include "src/features/mouth/mouth_analyzer.h"
 
-#include <iostream>
+#include <vector>
 
 #include "mediapipe/framework/port/opencv_core_inc.h"
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
 
-Mouth::Mouth(int img_width, int img_height)
+MouthAnalyzer::MouthAnalyzer(int img_width, int img_height)
     : GenericAnalyzer(img_width, img_height) {}
 
-Mouth::Mouth(mediapipe::NormalizedLandmarkList landmarks, 
+MouthAnalyzer::MouthAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
               int img_width, int img_height)
                     : GenericAnalyzer{ landmarks, img_width, img_height } {
     Update();
 }
 
-void Mouth::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
+void MouthAnalyzer::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
     GenericAnalyzer::SetLandmarks(landmarks);
 
     Update();
 }
 
-double Mouth::GetMouthOuter() {
+double MouthAnalyzer::GetMouthOuter() {
     return m_mouth_outer_;
 }
 
-double Mouth::GetMouthCorner() {
+double MouthAnalyzer::GetMouthCorner() {
     return m_mouth_corner_;
 }
 
-double Mouth::Area() {
+double MouthAnalyzer::Area() {
     return m_area_;
 }
 
-void Mouth::Update() {
+void MouthAnalyzer::Update() {
     UpdateMouthArea();
     UpdateMouthOuter();
     UpdateMouthCorner();
 }
 
-void Mouth::UpdateMouthArea() {
+void MouthAnalyzer::UpdateMouthArea() {
     std::vector<cv::Point> mouth_contour;
 
     int x, y;
@@ -54,7 +54,7 @@ void Mouth::UpdateMouthArea() {
     m_area_ = cv::contourArea(mouth_contour);
 }
 
-void Mouth::UpdateMouthOuter() {
+void MouthAnalyzer::UpdateMouthOuter() {
     double distances_sum = 0;
 
     double anchor_x, anchor_y, x, y;
@@ -88,7 +88,7 @@ void Mouth::UpdateMouthOuter() {
 
 }
 
-void Mouth::UpdateMouthCorner() {
+void MouthAnalyzer::UpdateMouthCorner() {
     double distances_sum = 0;
 
     double anchor_x, anchor_y, x, y;

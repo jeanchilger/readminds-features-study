@@ -1,7 +1,7 @@
 cc_library(
-    name = "mouth_analyzer",
-    srcs = ["mouth_analyzer.cc"],
-    hdrs = ["mouth_analyzer.h"],
+    name = "face_analyzer",
+    srcs = ["face_analyzer.cc"],
+    hdrs = ["face_analyzer.h"],
     visibility = [
         "//visibility:public",
     ],

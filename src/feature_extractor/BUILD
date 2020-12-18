@@ -3,7 +3,8 @@ cc_binary(
     srcs = ["feature_extractor_single_image.cc"],
     deps = [
         "//src/features/eye:eye",
-        "//src/features/mouth:mouth",
+        "//src/features/mouth:mouth_analyzer",
+        "//src/features/face:face_analyzer",
         "//mediapipe/modules/face_landmark:face_landmark_front_cpu",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/formats:image_frame",
