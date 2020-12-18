@@ -6,16 +6,16 @@
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
 
 Mouth::Mouth(int img_width, int img_height)
-    : FaceAnalyzer(img_width, img_height) {}
+    : GenericAnalyzer(img_width, img_height) {}
 
 Mouth::Mouth(mediapipe::NormalizedLandmarkList landmarks, 
               int img_width, int img_height)
-                    : FaceAnalyzer{ landmarks, img_width, img_height } {
+                    : GenericAnalyzer{ landmarks, img_width, img_height } {
     Update();
 }
 
 void Mouth::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
-    FaceAnalyzer::SetLandmarks(landmarks);
+    GenericAnalyzer::SetLandmarks(landmarks);
 
     Update();
 }

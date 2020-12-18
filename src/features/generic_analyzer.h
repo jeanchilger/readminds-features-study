@@ -10,15 +10,15 @@ const int ANCHOR_LANDMARKS[] = {
 
 // Face object providing generic data used by
 // other features, such as A and K.
-class FaceAnalyzer {
+class GenericAnalyzer {
     public:
 
-        FaceAnalyzer(int img_width, int img_height);
+        GenericAnalyzer(int img_width, int img_height);
         
-        FaceAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
+        GenericAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
                      int img_width, int img_height);
 
-        // ~FaceAnalyzer();
+        // ~GenericAnalyzer();
 
         // landmarks_ setter
         void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);

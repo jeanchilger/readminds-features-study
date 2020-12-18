@@ -1,14 +1,14 @@
 #include <cmath>
 #include <iostream>
 
-#include "src/features/face_analyzer.h"
+#include "src/features/generic_analyzer.h"
 
-FaceAnalyzer::FaceAnalyzer(int img_width, int img_height) {
+GenericAnalyzer::GenericAnalyzer(int img_width, int img_height) {
     img_width_ = img_width;
     img_height_ = img_height;
 }
 
-FaceAnalyzer::FaceAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
+GenericAnalyzer::GenericAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
               int img_width, int img_height) {
     img_width_ = img_width;
     img_height_ = img_height;
@@ -16,19 +16,19 @@ FaceAnalyzer::FaceAnalyzer(mediapipe::NormalizedLandmarkList landmarks,
     SetLandmarks(landmarks);
 }
 
-void FaceAnalyzer::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
+void GenericAnalyzer::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
     landmarks_ = landmarks;
 
     SetNormFactor();
 }
 
-double FaceAnalyzer::EuclideanDistance(cv::Point a, cv::Point b) {
+double GenericAnalyzer::EuclideanDistance(cv::Point a, cv::Point b) {
     cv::Point diff = a - b;
 
     return std::sqrt(diff.x * diff.x + diff.y * diff.y);
 }
 
-double FaceAnalyzer::EuclideanDistance(
+double GenericAnalyzer::EuclideanDistance(
         double x1, 
         double y1, 
         double x2, 
@@ -37,7 +37,7 @@ double FaceAnalyzer::EuclideanDistance(
     return std::sqrt(x1 * x2 + y1 * y2);
 }
 
-void FaceAnalyzer::SetNormFactor() {
+void GenericAnalyzer::SetNormFactor() {
     mediapipe::NormalizedLandmark first_anchor = 
             landmarks_.landmark(ANCHOR_LANDMARKS[0]);
 

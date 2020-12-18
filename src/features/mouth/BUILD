@@ -6,7 +6,7 @@ cc_library(
         "//visibility:public",
     ],
     deps = [
-        "//src/features:face_analyzer",
+        "//src/features:generic_analyzer",
         "//mediapipe/framework/formats:landmark_cc_proto",
         "//mediapipe/framework/port:opencv_imgproc",
         "//mediapipe/framework/port:opencv_core",
