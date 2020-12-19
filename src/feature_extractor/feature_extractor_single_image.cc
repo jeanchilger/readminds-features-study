@@ -125,6 +125,12 @@ mediapipe::Status RunGraph() {
     // ===========================
     double f3 = eye_descriptor.GetEyeInnerArea();
     std::cout << f3 << std::endl;
+
+    // ===========================
+    // F4
+    // ===========================
+    double f4 = eye_descriptor.GetEyebrow();
+    std::cout << f4 << std::endl;
     
     //============================
     // F5
