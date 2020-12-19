@@ -21,11 +21,11 @@ const int EYE_LEFT_INNER_LMARKS[] =  {
     398, 466, 463
 };
 
-class Eye
+class EyeAnalyzer
 {
 public:
-    Eye(int width, int height);
-    Eye(mediapipe::NormalizedLandmarkList list, int width, int height);
+    EyeAnalyzer(int width, int height);
+    EyeAnalyzer(mediapipe::NormalizedLandmarkList list, int width, int height);
     void SetLandmarks(mediapipe::NormalizedLandmarkList list);
     double GetEyeInnerArea();
 

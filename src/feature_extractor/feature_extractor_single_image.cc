@@ -25,7 +25,7 @@
 
 #include "src/features/face/face_analyzer.h"
 #include "src/features/mouth/mouth_analyzer.h"
-#include "src/features/eye/eye.h"
+#include "src/features/eye/eye_analyzer.h"
 
 DEFINE_string(input_image_path, "",
               "Path to the image.");

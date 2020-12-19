@@ -1,7 +1,7 @@
 cc_library(
-    name = "eye",
-    srcs = ["eye.cc"],
-    hdrs = ["eye.h"],
+    name = "eye_analyzer",
+    srcs = ["eye_analyzer.cc"],
+    hdrs = ["eye_analyzer.h"],
     visibility = [
         "//visibility:public",
     ],
