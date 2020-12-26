@@ -53,15 +53,15 @@ class MouthAnalyzer: public GenericAnalyzer {
         void Update();
 
         // Calculates the area of the mouth. 
-        void UpdateMouthArea();
+        void CalculateMouthArea();
 
         // Calculates the distances between mouth outer landmarks and 
         // anchor landmarks.
-        void UpdateMouthOuter();
+        void CalculateMouthOuter();
         
         // Calculates the distances between mouth corner landmarks 
         // and anchor landmarks.
-        void UpdateMouthCorner();
+        void CalculateMouthCorner();
 
 };
 

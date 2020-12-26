@@ -33,12 +33,12 @@ double MouthAnalyzer::Area() {
 }
 
 void MouthAnalyzer::Update() {
-    UpdateMouthArea();
-    UpdateMouthOuter();
-    UpdateMouthCorner();
+    CalculateMouthArea();
+    CalculateMouthOuter();
+    CalculateMouthCorner();
 }
 
-void MouthAnalyzer::UpdateMouthArea() {
+void MouthAnalyzer::CalculateMouthArea() {
     std::vector<cv::Point> mouth_contour;
 
     int x, y;
@@ -54,7 +54,7 @@ void MouthAnalyzer::UpdateMouthArea() {
     m_area_ = cv::contourArea(mouth_contour);
 }
 
-void MouthAnalyzer::UpdateMouthOuter() {
+void MouthAnalyzer::CalculateMouthOuter() {
     double distances_sum = 0;
 
     double anchor_x, anchor_y, x, y;
@@ -88,7 +88,7 @@ void MouthAnalyzer::UpdateMouthOuter() {
 
 }
 
-void MouthAnalyzer::UpdateMouthCorner() {
+void MouthAnalyzer::CalculateMouthCorner() {
     double distances_sum = 0;
 
     double anchor_x, anchor_y, x, y;

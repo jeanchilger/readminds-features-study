@@ -22,13 +22,17 @@ class FaceAnalyzer : public GenericAnalyzer {
 
     protected:
         double f_face_area_;
+        double f_face_motion_;
 
         // Calls all other update functions.
         void Update();
 
         // Calculates the area of the convex hull that closes
         // the whole face.
-        void UpdateFaceArea();
+        void CalculateFaceArea();
+
+        //
+        void CalculateFaceMotion();
 
 
 };

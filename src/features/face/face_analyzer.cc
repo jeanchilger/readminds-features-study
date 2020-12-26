@@ -25,7 +25,7 @@ double FaceAnalyzer::GetFaceArea() {
 
 // TODO: This may be a ineffective approach.
 // Selecting only the outer landmarks could be faster.
-void FaceAnalyzer::UpdateFaceArea() {
+void FaceAnalyzer::CalculateFaceArea() {
     std::vector<cv::Point> all_points;
     std::vector<cv::Point> hull;
 
@@ -45,6 +45,11 @@ void FaceAnalyzer::UpdateFaceArea() {
 
 }
 
+void FaceAnalyzer::CalculateFaceMotion(int n) {
+
+}
+
 void FaceAnalyzer::Update() {
-    UpdateFaceArea();
+    CalculateFaceArea();
+    CalculateFaceMotion();
 }
