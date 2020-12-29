@@ -40,55 +40,55 @@ const int EYE_BROW_RIGHT_LOWER[] = {
     300, 283, 282, 295, 285
 };
 
-class EyeAnalyzer : GenericAnalyzer
-{
-public:
-    EyeAnalyzer(int width, int height);
-
-    EyeAnalyzer(mediapipe::NormalizedLandmarkList list, int width, int height);
-
-    // Landmarks list setter
-    void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);
-
-    // Return left and right eyes area
-    double GetEyeInnerArea();
-
-    // Return the sum of distances eyebrow landmarks
-    // and anchor points normalized
-    double GetEyebrow();
-
-private:
- 
-    std::vector<cv::Point> eye_right_contour_;
-    std::vector<cv::Point> eye_left_contour_;
-    double eye_area_, eyebrow_anchor_dist_sum_;
-
-    // Updates all feature values each time
-    // a new landmark list is set
-    void Update();
-
-    // Computes the eye area for landmarks which are
-    // closer to the eye
-    // Relative to feature F3 in Fernando's paper
-    void UpdateEyeInnerArea();
-
-    // Computes the eyebrow landmarks distance sum
-    // Relative to feature F4 in Fernando's paper
-    void UpdateEyebrow();
-
-    // Convert normalized landmarks coordinates into
-    // a OpenCV point, depth (z) is not been taken
-    // into account (yet).
-    cv::Point CvtNormIntoCvPoint_(mediapipe::NormalizedLandmark lmark);
+class EyeAnalyzer : GenericAnalyzer {
     
-    // Creates two vectors of cv::Points that
-    // describes eyes contours for further area
-    // calculation.
-    void GenerateEyeContours_();
+    public:
+        EyeAnalyzer(int width, int height);
 
-    // Compute the right and left eye area
-    // using contourArea() from OpenCV
-    // and adds this two values
-    double ComputeEyesContoursArea_();
+        EyeAnalyzer(mediapipe::NormalizedLandmarkList list, int width, int height);
+
+        // Landmarks list setter
+        void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);
+
+        // Return left and right eyes area
+        double GetEyeInnerArea();
+
+        // Return the sum of distances eyebrow landmarks
+        // and anchor points normalized
+        double GetEyebrow();
+
+    private:
+    
+        std::vector<cv::Point> eye_right_contour_;
+        std::vector<cv::Point> eye_left_contour_;
+        double eye_area_, eyebrow_anchor_dist_sum_;
+
+        // Updates all feature values each time
+        // a new landmark list is set
+        void Update();
+
+        // Computes the eye area for landmarks which are
+        // closer to the eye
+        // Relative to feature F3 in Fernando's paper
+        void UpdateEyeInnerArea();
+
+        // Computes the eyebrow landmarks distance sum
+        // Relative to feature F4 in Fernando's paper
+        void UpdateEyebrow();
+
+        // Convert normalized landmarks coordinates into
+        // a OpenCV point, depth (z) is not been taken
+        // into account (yet).
+        cv::Point CvtNormIntoCvPoint_(mediapipe::NormalizedLandmark lmark);
+        
+        // Creates two vectors of cv::Points that
+        // describes eyes contours for further area
+        // calculation.
+        void GenerateEyeContours_();
+
+        // Compute the right and left eye area
+        // using contourArea() from OpenCV
+        // and adds this two values
+        double ComputeEyesContoursArea_();
 };
 #endif

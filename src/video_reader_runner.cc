@@ -11,8 +11,7 @@ const std::string VIDEO_PATH = "data/dummy/video_1.mp4";
 
 /*
     Build: 
-            bazel build --define MEDIAPIPE_DISABLE_GPU=1 \
-            //src:video_reader_runner --check_visibility=false
+        bazel build --define MEDIAPIPE_DISABLE_GPU=1 //src:video_reader_runner --check_visibility=false
     RUN:
         bazel-bin/src/video_reader_runner
 
