@@ -47,7 +47,7 @@ REGISTER_CALCULATOR(VideoReaderCalculator);
 
 ::mediapipe::Status VideoReaderCalculator::GetContract(CalculatorContract* cc) {
     cc->InputSidePackets().Tag("VIDEO_STREAM").Set<std::string>();
-    cc->Outputs().Tag("OUTPUT_FRAME").Set<ImageFrame>();
+    cc->Outputs().Tag("IMAGE").Set<ImageFrame>();
 
     return mediapipe::OkStatus();
 }
@@ -128,7 +128,7 @@ REGISTER_CALCULATOR(VideoReaderCalculator);
     }
 
     if (prev_timestamp_ < timestamp) {
-        cc->Outputs().Tag("OUTPUT_FRAME").Add(image_frame.release(), timestamp);
+        cc->Outputs().Tag("IMAGE").Add(image_frame.release(), timestamp);
         prev_timestamp_ = timestamp;
         readed_frames_++;
     }
