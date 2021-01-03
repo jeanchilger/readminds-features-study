@@ -30,15 +30,6 @@
 DEFINE_string(input_image_path, "",
               "Path to the image.");
 
-DEFINE_bool(split_landmarks, false,
-            "Whether or not to split landmarks on more than one image.");
-
-DEFINE_bool(show_image, false,
-            "Whether ot not to show the (result) image on the screen.");
-
-DEFINE_bool(save_image, true,
-            "Whether or not to save the final image.");
-
 //
 mediapipe::Status RunGraph() {
 
