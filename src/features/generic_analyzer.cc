@@ -3,17 +3,19 @@
 
 #include "src/features/generic_analyzer.h"
 
+// PUBLIC
+
+// GenericAnalyzer::GenericAnalyzer() {
+
+// }
+
 GenericAnalyzer::GenericAnalyzer(int img_width, int img_height) {
-    img_width_ = img_width;
-    img_height_ = img_height;
+    Initialize(img_width, img_height);
 }
 
 GenericAnalyzer::GenericAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
-              int img_width, int img_height) {
-    img_width_ = img_width;
-    img_height_ = img_height;
-
-    SetLandmarks(landmarks);
+                                 int img_width, int img_height) {
+    Initialize(landmarks, img_width, img_height);
 }
 
 void GenericAnalyzer::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
@@ -21,6 +23,21 @@ void GenericAnalyzer::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) 
 
     SetNormFactor();
 }
+
+void GenericAnalyzer::Initialize(int img_width, int img_height) {
+    img_width_ = img_width;
+    img_height_ = img_height;
+}
+        
+void GenericAnalyzer::Initialize(mediapipe::NormalizedLandmarkList landmarks, 
+                                 int img_width, int img_height) {
+    img_width_ = img_width;
+    img_height_ = img_height;
+
+    SetLandmarks(landmarks);
+}
+
+// PROTECTED
 
 double GenericAnalyzer::EuclideanDistance(cv::Point a, cv::Point b) {
     cv::Point diff = a - b;

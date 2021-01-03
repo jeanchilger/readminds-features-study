@@ -4,6 +4,8 @@
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
 #include "src/features/face/face_analyzer.h"
 
+// FaceAnalyzer::FaceAnalyzer() : GenericAnalyzer() {}
+
 FaceAnalyzer::FaceAnalyzer(int img_width, int img_height)
     : GenericAnalyzer(img_width, img_height) {}
 
@@ -15,6 +17,19 @@ FaceAnalyzer::FaceAnalyzer(mediapipe::NormalizedLandmarkList landmarks,
 
 void FaceAnalyzer::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
     GenericAnalyzer::SetLandmarks(landmarks);
+
+    Update();
+}
+
+void FaceAnalyzer::Initialize(int img_width, int img_height) {
+    GenericAnalyzer::Initialize(img_width, img_height);
+
+    Update();
+}
+
+void FaceAnalyzer::Initialize(mediapipe::NormalizedLandmarkList landmarks, 
+                               int img_width, int img_height) {
+    GenericAnalyzer::Initialize(landmarks, img_width, img_height);
 
     Update();
 }
@@ -45,7 +60,7 @@ void FaceAnalyzer::CalculateFaceArea() {
 
 }
 
-void FaceAnalyzer::CalculateFaceMotion(int n) {
+void FaceAnalyzer::CalculateFaceMotion() {
 
 }
 

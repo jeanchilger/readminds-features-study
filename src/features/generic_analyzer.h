@@ -18,16 +18,23 @@ const int F4_ANCHORS[] = {
 // other features, such as A and K.
 class GenericAnalyzer {
     public:
+        GenericAnalyzer() = default;
 
         GenericAnalyzer(int img_width, int img_height);
         
         GenericAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
                      int img_width, int img_height);
 
-        // ~GenericAnalyzer();
+        virtual ~GenericAnalyzer() = default;
 
         // landmarks_ setter
         void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);
+
+        // Sets all needed attributes
+        void Initialize(int img_width, int img_height);
+        
+        void Initialize(mediapipe::NormalizedLandmarkList landmarks, 
+                        int img_width, int img_height);
 
     protected:
         double norm_factor_;

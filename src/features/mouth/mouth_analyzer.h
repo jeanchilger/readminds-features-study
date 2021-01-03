@@ -20,9 +20,11 @@ const int MOUTH_CORNERS[] = {
 
 // Class that wraps mouth-related features.
 //
-class MouthAnalyzer: public GenericAnalyzer {
+class MouthAnalyzer : public GenericAnalyzer {
 
     public:
+        MouthAnalyzer() = default;
+
         MouthAnalyzer(int img_width, int img_height);
 
         MouthAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
@@ -30,6 +32,12 @@ class MouthAnalyzer: public GenericAnalyzer {
 
         // landmarks_ setter
         void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);
+
+        // Sets all needed attributes
+        void Initialize(int img_width, int img_height);
+        
+        void Initialize(mediapipe::NormalizedLandmarkList landmarks, 
+                        int img_width, int img_height);
 
         // Get the area of the mouth. Area is calculated using OpenCV's contourArea().
         // The mouth shape is defined as a combination of all outer points of the

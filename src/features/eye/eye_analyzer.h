@@ -40,15 +40,23 @@ const int EYE_BROW_RIGHT_LOWER[] = {
     300, 283, 282, 295, 285
 };
 
-class EyeAnalyzer : GenericAnalyzer {
+class EyeAnalyzer : public GenericAnalyzer {
     
     public:
+        EyeAnalyzer() = default;
+
         EyeAnalyzer(int width, int height);
 
         EyeAnalyzer(mediapipe::NormalizedLandmarkList list, int width, int height);
 
         // Landmarks list setter
         void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);
+
+        // Sets all needed attributes
+        void Initialize(int img_width, int img_height);
+        
+        void Initialize(mediapipe::NormalizedLandmarkList landmarks, 
+                        int img_width, int img_height);
 
         // Return left and right eyes area
         double GetEyeInnerArea();
