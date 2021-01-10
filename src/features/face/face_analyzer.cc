@@ -28,11 +28,8 @@ void FaceAnalyzer::CalculateFaceArea() {
     int x, y;
     for (int i=0; i < 468; i ++) {
         mediapipe::NormalizedLandmark landmark = landmarks_.landmark(i);
-
-        x = (int) floor(landmark.x() * img_width_);
-        y = (int) floor(landmark.y() * img_height_);
         
-        all_points.push_back(cv::Point(x, y));
+        all_points.push_back(CvtNormIntoCvPoint(landmark));
     }
 
     cv::convexHull(all_points, hull);

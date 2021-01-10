@@ -36,11 +36,8 @@ void MouthAnalyzer::CalculateMouthArea() {
     int x, y;
     for (int i : MOUTH_UPPER_LIP) {
         mediapipe::NormalizedLandmark landmark = landmarks_.landmark(i);
-
-        x = (int) floor(landmark.x() * img_width_);
-        y = (int) floor(landmark.y() * img_height_);
         
-        mouth_contour.push_back(cv::Point(x, y));
+        mouth_contour.push_back(CvtNormIntoCvPoint(landmark));
     }
 
     mouth_area_ = cv::contourArea(mouth_contour);
@@ -53,17 +50,20 @@ void MouthAnalyzer::CalculateMouthOuter() {
     for (int a : ANCHOR_LANDMARKS) {
         mediapipe::NormalizedLandmark anchor_landmark = landmarks_.landmark(a);
         
-        anchor_x = anchor_landmark.x() * img_width_;
-        anchor_y = anchor_landmark.y() * img_height_;
+        // anchor_x = anchor_landmark.x() * img_width_;
+        // anchor_y = anchor_landmark.y() * img_height_;
+
+        cv::Point anchor = CvtNormIntoCvPoint(anchor_landmark);
 
         // Calculates the distances for the upper region.
         for (int i : MOUTH_UPPER_LIP) {
             mediapipe::NormalizedLandmark landmark = landmarks_.landmark(i);
 
-            x = landmark.x() * img_width_;
-            y = landmark.y() * img_height_;
+            // x = landmark.x() * img_width_;
+            // y = landmark.y() * img_height_;
 
-            distances_sum += EuclideanDistance(anchor_x, anchor_y, x, y);
+            distances_sum += EuclideanDistance(anchor, 
+                                               CvtNormIntoCvPoint(landmark));
 
         }
 
@@ -71,10 +71,11 @@ void MouthAnalyzer::CalculateMouthOuter() {
         for (int i : MOUTH_LOWER_LIP) {
             mediapipe::NormalizedLandmark landmark = landmarks_.landmark(i);
 
-            x = landmark.x() * img_width_;
-            y = landmark.y() * img_height_;
+            // x = landmark.x() * img_width_;
+            // y = landmark.y() * img_height_;
 
-            distances_sum += EuclideanDistance(anchor_x, anchor_y, x, y);
+            distances_sum += EuclideanDistance(anchor, 
+                                               CvtNormIntoCvPoint(landmark));
         }
     }
 
@@ -88,17 +89,19 @@ void MouthAnalyzer::CalculateMouthCorner() {
     for (int a : ANCHOR_LANDMARKS) {
         mediapipe::NormalizedLandmark anchor_landmark = landmarks_.landmark(a);
         
-        anchor_x = anchor_landmark.x() * img_width_;
-        anchor_y = anchor_landmark.y() * img_height_;
+        // anchor_x = anchor_landmark.x() * img_width_;
+        // anchor_y = anchor_landmark.y() * img_height_;
+
+        cv::Point anchor = CvtNormIntoCvPoint(anchor_landmark);
 
         for (int i : MOUTH_CORNERS) {
             mediapipe::NormalizedLandmark landmark = landmarks_.landmark(i);
 
-            x = landmark.x() * img_width_;
-            y = landmark.y() * img_height_;
+            // x = landmark.x() * img_width_;
+            // y = landmark.y() * img_height_;
 
-            distances_sum += EuclideanDistance(anchor_x, anchor_y, x, y);
-
+            distances_sum += EuclideanDistance(anchor, 
+                                               CvtNormIntoCvPoint(landmark));
         }
     }
 
