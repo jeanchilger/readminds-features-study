@@ -1,8 +1,9 @@
+#include "src/features/face/face_analyzer.h"
+
 #include <vector>
 
 #include "mediapipe/framework/port/opencv_core_inc.h"
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
-#include "src/features/face/face_analyzer.h"
 
 // FaceAnalyzer::FaceAnalyzer() : GenericAnalyzer() {}
 
@@ -11,31 +12,11 @@ FaceAnalyzer::FaceAnalyzer(int img_width, int img_height)
 
 FaceAnalyzer::FaceAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
               int img_width, int img_height)
-                    : GenericAnalyzer{ landmarks, img_width, img_height } {
-    Update();
-}
+                    : GenericAnalyzer(landmarks, img_width, img_height) {}
 
-void FaceAnalyzer::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
-    GenericAnalyzer::SetLandmarks(landmarks);
-
-    Update();
-}
-
-void FaceAnalyzer::Initialize(int img_width, int img_height) {
-    GenericAnalyzer::Initialize(img_width, img_height);
-
-    Update();
-}
-
-void FaceAnalyzer::Initialize(mediapipe::NormalizedLandmarkList landmarks, 
-                               int img_width, int img_height) {
-    GenericAnalyzer::Initialize(landmarks, img_width, img_height);
-
-    Update();
-}
 
 double FaceAnalyzer::GetFaceArea() {
-    return f_face_area_;
+    return face_area_;
 }
 
 // TODO: This may be a ineffective approach.
@@ -56,7 +37,7 @@ void FaceAnalyzer::CalculateFaceArea() {
 
     cv::convexHull(all_points, hull);
 
-    f_face_area_ = cv::contourArea(hull) / norm_factor_;
+    face_area_ = cv::contourArea(hull) / norm_factor_;
 
 }
 

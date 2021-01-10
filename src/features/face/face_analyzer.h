@@ -1,5 +1,5 @@
-#ifndef _READMINDS_FACE_H_
-#define _READMINDS_FACE_H_
+#ifndef _READMINDS_FEATURES_FACE_FACE_ANALYZER_H_
+#define _READMINDS_FEATURES_FACE_FACE_ANALYZER_H_
 
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "src/features/generic_analyzer.h"
@@ -16,25 +16,17 @@ class FaceAnalyzer : public GenericAnalyzer {
         FaceAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
                 int img_width, int img_height);
 
-        // landmarks_ setter
-        void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);
-
-        // Sets all needed attributes
-        void Initialize(int img_width, int img_height);
-        
-        void Initialize(mediapipe::NormalizedLandmarkList landmarks, 
-                        int img_width, int img_height);
-
-        // Gets the area of the polygon that contains all landmarks.
+        // Gets the area of face. This is calculated as 
+        // the area of the convex hull that contains all landmarks.
         double GetFaceArea();
 
-        // Get face motion
+        // 
         double GetFaceMotion();
 
     protected:
-        double f_face_area_;
-        double f_face_motion_;
-        int f_num_frames_motion_ = 50;
+        double face_area_;
+        double face_motion_;
+        int num_frames_motion_ = 50;
 
         // Calls all other update functions.
         void Update();
