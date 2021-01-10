@@ -27,6 +27,7 @@ cc_library(
 cc_library(
     name = "video_reader_calculator",
     srcs = ["video_reader_calculator.cc"],
+    hdrs = ["video_reader_calculator.h"],
     visibility = [
         "//visibility:public"
     ],

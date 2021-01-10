@@ -4,6 +4,8 @@
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
 #include "src/features/face/face_analyzer.h"
 
+// FaceAnalyzer::FaceAnalyzer() : GenericAnalyzer() {}
+
 FaceAnalyzer::FaceAnalyzer(int img_width, int img_height)
     : GenericAnalyzer(img_width, img_height) {}
 
@@ -19,13 +21,26 @@ void FaceAnalyzer::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
     Update();
 }
 
+void FaceAnalyzer::Initialize(int img_width, int img_height) {
+    GenericAnalyzer::Initialize(img_width, img_height);
+
+    Update();
+}
+
+void FaceAnalyzer::Initialize(mediapipe::NormalizedLandmarkList landmarks, 
+                               int img_width, int img_height) {
+    GenericAnalyzer::Initialize(landmarks, img_width, img_height);
+
+    Update();
+}
+
 double FaceAnalyzer::GetFaceArea() {
     return f_face_area_;
 }
 
 // TODO: This may be a ineffective approach.
 // Selecting only the outer landmarks could be faster.
-void FaceAnalyzer::UpdateFaceArea() {
+void FaceAnalyzer::CalculateFaceArea() {
     std::vector<cv::Point> all_points;
     std::vector<cv::Point> hull;
 
@@ -45,6 +60,11 @@ void FaceAnalyzer::UpdateFaceArea() {
 
 }
 
+void FaceAnalyzer::CalculateFaceMotion() {
+
+}
+
 void FaceAnalyzer::Update() {
-    UpdateFaceArea();
+    CalculateFaceArea();
+    CalculateFaceMotion();
 }

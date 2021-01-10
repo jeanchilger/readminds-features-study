@@ -18,16 +18,23 @@ const int F4_ANCHORS[] = {
 // other features, such as A and K.
 class GenericAnalyzer {
     public:
+        GenericAnalyzer() = default;
 
         GenericAnalyzer(int img_width, int img_height);
         
         GenericAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
                      int img_width, int img_height);
 
-        // ~GenericAnalyzer();
+        virtual ~GenericAnalyzer() = default;
 
         // landmarks_ setter
         void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);
+
+        // Sets all needed attributes
+        void Initialize(int img_width, int img_height);
+        
+        void Initialize(mediapipe::NormalizedLandmarkList landmarks, 
+                        int img_width, int img_height);
 
     protected:
         double norm_factor_;
@@ -42,8 +49,12 @@ class GenericAnalyzer {
         
         double EuclideanDistance(double x1, double y1, double x2, double y2);
 
-        // Updates the normalize factor with landmars value
-        void SetNormFactor();
+        // Updates the normalize factor with landmarks value
+        void CalculateNormFactor();
+
+        // Pure virtual function responsible for updating all
+        // feature values within a analyzer.
+        virtual void Update() = 0;
 
         // Convert normalized landmarks coordinate into
         // a OpenCV point, depth (z) is not been taken

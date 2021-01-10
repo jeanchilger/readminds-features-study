@@ -3,24 +3,42 @@
 
 #include "src/features/generic_analyzer.h"
 
+// PUBLIC
+
+// GenericAnalyzer::GenericAnalyzer() {
+
+// }
+
 GenericAnalyzer::GenericAnalyzer(int img_width, int img_height) {
-    img_width_ = img_width;
-    img_height_ = img_height;
+    Initialize(img_width, img_height);
 }
 
 GenericAnalyzer::GenericAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
-              int img_width, int img_height) {
+                                 int img_width, int img_height) {
+    Initialize(landmarks, img_width, img_height);
+}
+
+void GenericAnalyzer::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
+    landmarks_ = landmarks;
+
+    CalculateNormFactor();
+    Update();
+}
+
+void GenericAnalyzer::Initialize(int img_width, int img_height) {
+    img_width_ = img_width;
+    img_height_ = img_height;
+}
+        
+void GenericAnalyzer::Initialize(mediapipe::NormalizedLandmarkList landmarks, 
+                                 int img_width, int img_height) {
     img_width_ = img_width;
     img_height_ = img_height;
 
     SetLandmarks(landmarks);
 }
 
-void GenericAnalyzer::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
-    landmarks_ = landmarks;
-
-    SetNormFactor();
-}
+// PROTECTED
 
 double GenericAnalyzer::EuclideanDistance(cv::Point a, cv::Point b) {
     cv::Point diff = a - b;
@@ -37,7 +55,7 @@ double GenericAnalyzer::EuclideanDistance(
     return std::sqrt(x1 * x2 + y1 * y2);
 }
 
-void GenericAnalyzer::SetNormFactor() {
+void GenericAnalyzer::CalculateNormFactor() {
     mediapipe::NormalizedLandmark first_anchor = 
             landmarks_.landmark(ANCHOR_LANDMARKS[0]);
 

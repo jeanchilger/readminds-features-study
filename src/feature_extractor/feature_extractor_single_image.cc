@@ -30,15 +30,6 @@
 DEFINE_string(input_image_path, "",
               "Path to the image.");
 
-DEFINE_bool(split_landmarks, false,
-            "Whether or not to split landmarks on more than one image.");
-
-DEFINE_bool(show_image, false,
-            "Whether ot not to show the (result) image on the screen.");
-
-DEFINE_bool(save_image, true,
-            "Whether or not to save the final image.");
-
 //
 mediapipe::Status RunGraph() {
 
@@ -112,31 +103,31 @@ mediapipe::Status RunGraph() {
     // F1
     // ===========================
     double f1 = mouth_descriptor.GetMouthOuter();
-    std::cout << f1 << std::endl;
+    std::cout << "F1: " << f1 << std::endl;
 
     // ===========================
     // F2
     // ===========================
     double f2 = mouth_descriptor.GetMouthCorner();
-    std::cout << f2 << std::endl;
+    std::cout << "F2: " << f2 << std::endl;
 
     // ===========================
     // F3
     // ===========================
     double f3 = eye_descriptor.GetEyeInnerArea();
-    std::cout << f3 << std::endl;
+    std::cout << "F3: " << f3 << std::endl;
 
     // ===========================
     // F4
     // ===========================
     double f4 = eye_descriptor.GetEyebrow();
-    std::cout << f4 << std::endl;
+    std::cout << "F4: " << f4 << std::endl;
     
     //============================
     // F5
     // ===========================
     double f5 = face_descriptor.GetFaceArea();
-    std::cout << f5 << std::endl;
+    std::cout << "F5: " << f5 << std::endl;
 
     
     MP_RETURN_IF_ERROR(graph.CloseInputStream("input_image"));
