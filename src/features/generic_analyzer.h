@@ -49,8 +49,12 @@ class GenericAnalyzer {
         
         double EuclideanDistance(double x1, double y1, double x2, double y2);
 
-        // Updates the normalize factor with landmars value
-        void SetNormFactor();
+        // Updates the normalize factor with landmarks value
+        void CalculateNormFactor();
+
+        // Pure virtual function responsible for updating all
+        // feature values within a analyzer.
+        virtual void Update() = 0;
 
 };
 

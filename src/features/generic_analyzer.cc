@@ -21,7 +21,8 @@ GenericAnalyzer::GenericAnalyzer(mediapipe::NormalizedLandmarkList landmarks,
 void GenericAnalyzer::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
     landmarks_ = landmarks;
 
-    SetNormFactor();
+    CalculateNormFactor();
+    Update();
 }
 
 void GenericAnalyzer::Initialize(int img_width, int img_height) {
@@ -54,7 +55,7 @@ double GenericAnalyzer::EuclideanDistance(
     return std::sqrt(x1 * x2 + y1 * y2);
 }
 
-void GenericAnalyzer::SetNormFactor() {
+void GenericAnalyzer::CalculateNormFactor() {
     mediapipe::NormalizedLandmark first_anchor = 
             landmarks_.landmark(ANCHOR_LANDMARKS[0]);
 
