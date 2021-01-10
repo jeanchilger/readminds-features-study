@@ -6,11 +6,6 @@
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
 
-/*
-    Eye related features, by now the implemented feature
-    is inner most eye area.
-*/
-
 const int EYE_LEFT_INNER_LMARKS[] = {
     7, 163, 144, 145, 153, 130, 154,
     133, 173, 157, 158, 159, 160, 161,
@@ -33,6 +28,7 @@ const int EYE_BROW_RIGHT_UPPER[] = {
 
 // lower eyebrow landmarks are not
 // being used, added for future purposes
+// (landmarks slightly below the previous ones)
 const int EYE_BROW_LEFT_LOWER[] = {
     46, 53, 52, 65, 55
 };
@@ -41,14 +37,24 @@ const int EYE_BROW_RIGHT_LOWER[] = {
     300, 283, 282, 295, 285
 };
 
+/*
+    Class that computes eye related features,
+    e.g. eye area (F3) and eyebrow activity (F4).
+*/
 class EyeAnalyzer : public GenericAnalyzer {
     
     public:
         EyeAnalyzer() = default;
 
+        // Contructs an EyeAnalyzer given
+        // frame width and height
         EyeAnalyzer(int width, int height);
 
-        EyeAnalyzer(mediapipe::NormalizedLandmarkList list, int width, int height);
+        // Contructs an EyeAnalyzer given
+        // a list of normalizedlandmarks,
+        // frame width and height
+        EyeAnalyzer(mediapipe::NormalizedLandmarkList list,
+                    int width, int height);
 
         // Landmarks list setter
         void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);
@@ -59,17 +65,23 @@ class EyeAnalyzer : public GenericAnalyzer {
         void Initialize(mediapipe::NormalizedLandmarkList landmarks, 
                         int img_width, int img_height);
 
-        // Return left and right eyes area
+        // Return the summation of left
+        // and right eyes area
         double GetEyeInnerArea();
 
-        // Return the sum of distances eyebrow landmarks
-        // and anchor points normalized
+        // Return the sum of distances between 
+        // eyebrow landmarks and anchor points
+        // normalized
         double GetEyebrow();
 
     private:
     
+        // Vectors that stores the points related
+        // to left and right eye contours
         std::vector<cv::Point> eye_right_contour_;
         std::vector<cv::Point> eye_left_contour_;
+
+        // Stores the features values
         double eye_area_, eyebrow_anchor_dist_sum_;
 
         // Updates all feature values each time
@@ -88,11 +100,11 @@ class EyeAnalyzer : public GenericAnalyzer {
         // Creates two vectors of cv::Points that
         // describes eyes contours for further area
         // calculation.
-        void GenerateEyeContours_();
+        void GenerateEyeContours();
 
         // Compute the right and left eye area
         // using contourArea() from OpenCV
         // and adds this two values
-        double ComputeEyesContoursArea_();
+        double ComputeEyesContoursArea();
 };
 #endif
