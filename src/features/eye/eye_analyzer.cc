@@ -45,18 +45,18 @@ double EyeAnalyzer::GetEyebrow() {
 }
 
 void EyeAnalyzer::UpdateEyeInnerArea() {
-    GenerateEyeContours_();
-    eye_area_ = ComputeEyesContoursArea_();
+    GenerateEyeContours();
+    eye_area_ = ComputeEyesContoursArea();
 }
 
-double EyeAnalyzer::ComputeEyesContoursArea_() {
+double EyeAnalyzer::ComputeEyesContoursArea() {
     double right_eye_area = cv::contourArea(eye_right_contour_);
     double left_eye_area  = cv::contourArea(eye_left_contour_);
 
     return right_eye_area + left_eye_area;
 }
 
-void EyeAnalyzer::GenerateEyeContours_() {
+void EyeAnalyzer::GenerateEyeContours() {
     mediapipe::NormalizedLandmark landmark;
     int eye_right_lmark, eye_left_lmark, eye_area_;
     int lmarks_amount = sizeof(EYE_RIGHT_INNER_LMARKS) / sizeof(int);
@@ -66,12 +66,12 @@ void EyeAnalyzer::GenerateEyeContours_() {
          
         eye_right_lmark = EYE_RIGHT_INNER_LMARKS[i];
         landmark = landmarks_.landmark(eye_right_lmark);
-        lmark_cv_point = CvtNormIntoCvPoint_(landmark);
+        lmark_cv_point = CvtNormIntoCvPoint(landmark);
         eye_right_contour_.push_back(lmark_cv_point);
         
         eye_left_lmark = EYE_LEFT_INNER_LMARKS[i];
         landmark = landmarks_.landmark(eye_left_lmark);
-        lmark_cv_point = CvtNormIntoCvPoint_(landmark);
+        lmark_cv_point = CvtNormIntoCvPoint(landmark);
         eye_left_contour_.push_back(lmark_cv_point);
     }
 }
