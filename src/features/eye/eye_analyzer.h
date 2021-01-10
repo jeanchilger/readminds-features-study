@@ -1,9 +1,10 @@
-#ifndef _READMINDS_EYE_H_
-#define _READMINDS_EYE_H_
+#ifndef _READMINDS_FEATURES_EYE_EYE_ANALYZER_H_
+#define _READMINDS_FEATURES_EYE_EYE_ANALYZER_H_
+
+#include "src/features/generic_analyzer.h"
 
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
-#include "src/features/generic_analyzer.h"
 
 /*
     Eye related features, by now the implemented feature
@@ -76,11 +77,6 @@ private:
     // Relative to feature F4 in Fernando's paper
     void UpdateEyebrow();
 
-    // Convert normalized landmarks coordinates into
-    // a OpenCV point, depth (z) is not been taken
-    // into account (yet).
-    cv::Point CvtNormIntoCvPoint_(mediapipe::NormalizedLandmark lmark);
-    
     // Creates two vectors of cv::Points that
     // describes eyes contours for further area
     // calculation.

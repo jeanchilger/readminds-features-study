@@ -54,3 +54,10 @@ void GenericAnalyzer::SetNormFactor() {
                     (int) floor(last_anchor.x() * img_width_),
                     (int) floor(last_anchor.y() * img_height_)));
 }
+
+cv::Point CvtNormIntoCvPoint(mediapipe::NormalizedLandmark lmark) {
+    int x = (int) floor(lmark.x() * img_width_);
+    int y = (int) floor(lmark.y() * img_height_);
+
+    return cv::Point(x, y);
+}

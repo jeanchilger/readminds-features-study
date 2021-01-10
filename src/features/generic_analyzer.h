@@ -45,6 +45,11 @@ class GenericAnalyzer {
         // Updates the normalize factor with landmars value
         void SetNormFactor();
 
+        // Convert normalized landmarks coordinate into
+        // a OpenCV point, depth (z) is not been taken
+        // into account (yet).
+        cv::Point CvtNormIntoCvPoint_(mediapipe::NormalizedLandmark lmark);
+
 };
 
 #endif
