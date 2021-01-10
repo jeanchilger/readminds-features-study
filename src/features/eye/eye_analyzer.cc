@@ -76,13 +76,6 @@ void EyeAnalyzer::GenerateEyeContours_() {
     }
 }
 
-cv::Point EyeAnalyzer::CvtNormIntoCvPoint_(mediapipe::NormalizedLandmark lmark) {
-    int x = (int) floor(lmark.x() * img_width_);
-    int y = (int) floor(lmark.y() * img_height_);
-
-    return cv::Point(x, y);
-}
-
 void EyeAnalyzer::UpdateEyebrow() {
     double distances_sum = 0;
 
