@@ -24,12 +24,6 @@ double MouthAnalyzer::GetMouthArea() {
     return mouth_area_;
 }
 
-void MouthAnalyzer::Update() {
-    CalculateMouthArea();
-    CalculateMouthOuter();
-    CalculateMouthCorner();
-}
-
 void MouthAnalyzer::CalculateMouthArea() {
     std::vector<cv::Point> mouth_contour;
 
@@ -49,18 +43,12 @@ void MouthAnalyzer::CalculateMouthOuter() {
     double anchor_x, anchor_y, x, y;
     for (int a : ANCHOR_LANDMARKS) {
         mediapipe::NormalizedLandmark anchor_landmark = landmarks_.landmark(a);
-        
-        // anchor_x = anchor_landmark.x() * img_width_;
-        // anchor_y = anchor_landmark.y() * img_height_;
 
         cv::Point anchor = CvtNormIntoCvPoint(anchor_landmark);
 
         // Calculates the distances for the upper region.
         for (int i : MOUTH_UPPER_LIP) {
             mediapipe::NormalizedLandmark landmark = landmarks_.landmark(i);
-
-            // x = landmark.x() * img_width_;
-            // y = landmark.y() * img_height_;
 
             distances_sum += EuclideanDistance(anchor, 
                                                CvtNormIntoCvPoint(landmark));
@@ -70,9 +58,6 @@ void MouthAnalyzer::CalculateMouthOuter() {
         // Calculates the distances for the lower region.
         for (int i : MOUTH_LOWER_LIP) {
             mediapipe::NormalizedLandmark landmark = landmarks_.landmark(i);
-
-            // x = landmark.x() * img_width_;
-            // y = landmark.y() * img_height_;
 
             distances_sum += EuclideanDistance(anchor, 
                                                CvtNormIntoCvPoint(landmark));
@@ -88,17 +73,11 @@ void MouthAnalyzer::CalculateMouthCorner() {
     double anchor_x, anchor_y, x, y;
     for (int a : ANCHOR_LANDMARKS) {
         mediapipe::NormalizedLandmark anchor_landmark = landmarks_.landmark(a);
-        
-        // anchor_x = anchor_landmark.x() * img_width_;
-        // anchor_y = anchor_landmark.y() * img_height_;
 
         cv::Point anchor = CvtNormIntoCvPoint(anchor_landmark);
 
         for (int i : MOUTH_CORNERS) {
             mediapipe::NormalizedLandmark landmark = landmarks_.landmark(i);
-
-            // x = landmark.x() * img_width_;
-            // y = landmark.y() * img_height_;
 
             distances_sum += EuclideanDistance(anchor, 
                                                CvtNormIntoCvPoint(landmark));
@@ -106,4 +85,10 @@ void MouthAnalyzer::CalculateMouthCorner() {
     }
 
     mouth_corner_ = distances_sum / norm_factor_;
+}
+
+void MouthAnalyzer::Update() {
+    CalculateMouthArea();
+    CalculateMouthOuter();
+    CalculateMouthCorner();
 }
