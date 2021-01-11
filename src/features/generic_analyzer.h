@@ -52,10 +52,14 @@ class GenericAnalyzer {
         // Updates the normalize factor with landmarks value
         void CalculateNormFactor();
 
-        // Convert normalized landmarks coordinate into
-        // a OpenCV point, depth (z) is not been taken
+        // Pure virtual function responsible for updating all
+        // feature values within an analyzer.
+        virtual void Update() = 0;
+
+        // Converts a normalized landmark coordinate into
+        // a OpenCV point. Depth (z) is not been taken
         // into account (yet).
-        cv::Point CvtNormIntoCvPoint_(mediapipe::NormalizedLandmark lmark);
+        cv::Point CvtNormIntoCvPoint(mediapipe::NormalizedLandmark landmark);
 
         // Computes the eucliand norm for
         // a given coordinate

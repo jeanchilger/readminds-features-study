@@ -90,15 +90,15 @@ mediapipe::Status RunVideoReader() {
 
         cv::imshow("Output Image", output_frame_mat);
 
+        mouth_descriptor.Initialize(face_landmarks, width, height);
+        face_descriptor.Initialize(face_landmarks, width, height);
+        eye_descriptor.Initialize(face_landmarks, width, height);
+
         char c = (char) cv::waitKey(1);
         if (c == 27) {
             break;
         
         } else if (c == 13) {
-
-            mouth_descriptor.Initialize(face_landmarks, width, height);
-            face_descriptor.Initialize(face_landmarks, width, height);
-            eye_descriptor.Initialize(face_landmarks, width, height);
 
             // ===========================
             // F1
@@ -129,6 +129,14 @@ mediapipe::Status RunVideoReader() {
             // ===========================
             double f5 = face_descriptor.GetFaceArea();
             std::cout << "F5: " << f5 << std::endl;
+
+            //============================
+            // F6
+            // ===========================
+            double f6 = face_descriptor.GetFaceMotion();
+            if (f6 > 0) {
+                std::cout << "F6: " << f6 << std::endl;
+            }
 
             std::cout << "======================================\n\n";
         }   

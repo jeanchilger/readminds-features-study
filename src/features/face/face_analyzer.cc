@@ -1,9 +1,9 @@
+#include "src/features/face/face_analyzer.h"
+
 #include <vector>
 
 #include "mediapipe/framework/port/opencv_core_inc.h"
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
-#include "src/features/face/face_analyzer.h"
-#include "src/features/eye/eye_analyzer.h"
 
 // FaceAnalyzer::FaceAnalyzer() : GenericAnalyzer() {}
 
@@ -12,31 +12,14 @@ FaceAnalyzer::FaceAnalyzer(int img_width, int img_height)
 
 FaceAnalyzer::FaceAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
               int img_width, int img_height)
-                    : GenericAnalyzer{ landmarks, img_width, img_height } {
-    Update();
-}
-
-void FaceAnalyzer::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
-    GenericAnalyzer::SetLandmarks(landmarks);
-
-    Update();
-}
-
-void FaceAnalyzer::Initialize(int img_width, int img_height) {
-    GenericAnalyzer::Initialize(img_width, img_height);
-
-    Update();
-}
-
-void FaceAnalyzer::Initialize(mediapipe::NormalizedLandmarkList landmarks, 
-                               int img_width, int img_height) {
-    GenericAnalyzer::Initialize(landmarks, img_width, img_height);
-
-    Update();
-}
+                    : GenericAnalyzer(landmarks, img_width, img_height) {}
 
 double FaceAnalyzer::GetFaceArea() {
-    return f_face_area_;
+    return face_area_;
+}
+
+double FaceAnalyzer::GetFaceMotion() {
+    return face_motion_;
 }
 
 // TODO: This may be a ineffective approach.
@@ -48,21 +31,59 @@ void FaceAnalyzer::CalculateFaceArea() {
     int x, y;
     for (int i=0; i < 468; i ++) {
         mediapipe::NormalizedLandmark landmark = landmarks_.landmark(i);
-
-        x = (int) floor(landmark.x() * img_width_);
-        y = (int) floor(landmark.y() * img_height_);
         
-        all_points.push_back(cv::Point(x, y));
+        all_points.push_back(CvtNormIntoCvPoint(landmark));
     }
 
     cv::convexHull(all_points, hull);
 
-    f_face_area_ = cv::contourArea(hull) / norm_factor_;
-
+    face_area_ = cv::contourArea(hull) / norm_factor_;
 }
 
 void FaceAnalyzer::CalculateFaceMotion() {
+    double face_motion = 0;
+    int anchor_list_size = sizeof(ANCHOR_LANDMARKS) / sizeof(*ANCHOR_LANDMARKS);
 
+    // Equivalent to D(f - Z, )
+    mediapipe::NormalizedLandmarkList first_anchor_list = last_anchors_.at(0);
+
+    for (int f=1; f < num_frames_motion_; f++) {
+        // Equivalent to D(f - t, )
+        mediapipe::NormalizedLandmarkList anchor_list = last_anchors_.at(f);
+        
+        for (int j=0; j < anchor_list_size; j++) {
+            // Equivalent to D(f - t, j)
+            mediapipe::NormalizedLandmark anchor_landmark = 
+                    anchor_list.landmark(j);
+
+            // Equivalent to D(f - Z, j)
+            mediapipe::NormalizedLandmark first_anchor_landmark = 
+                    first_anchor_list.landmark(j);
+
+            face_motion += EuclideanDistance(
+                    CvtNormIntoCvPoint(anchor_landmark), 
+                    CvtNormIntoCvPoint(first_anchor_landmark));
+        }
+    }
+
+    face_motion_ = face_motion / norm_factor_;
+}
+
+void FaceAnalyzer::UpdateLastAnchors() {
+    mediapipe::NormalizedLandmarkList anchor_list;
+    for (int a : ANCHOR_LANDMARKS) {
+        
+        mediapipe::NormalizedLandmark* anchor_landmark = 
+                anchor_list.add_landmark();
+
+        *anchor_landmark = landmarks_.landmark(a);
+    }
+
+    last_anchors_.push_back(anchor_list);
+
+    if (last_anchors_.size() > num_frames_motion_) {
+        last_anchors_.pop_front();
+    }
 }
 
 void FaceAnalyzer::CalculateFacialCenterOfMass() {
@@ -70,6 +91,10 @@ void FaceAnalyzer::CalculateFacialCenterOfMass() {
 }
 
 void FaceAnalyzer::Update() {
+    UpdateLastAnchors();
     CalculateFaceArea();
-    CalculateFaceMotion();
+
+    if (last_anchors_.size() == num_frames_motion_) {
+        CalculateFaceMotion();
+    }
 }

@@ -57,13 +57,13 @@ class EyeAnalyzer : public GenericAnalyzer {
                     int width, int height);
 
         // Landmarks list setter
-        void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);
+        // void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);
 
-        // Sets all needed attributes
-        void Initialize(int img_width, int img_height);
+        // // Sets all needed attributes
+        // void Initialize(int img_width, int img_height);
         
-        void Initialize(mediapipe::NormalizedLandmarkList landmarks, 
-                        int img_width, int img_height);
+        // void Initialize(mediapipe::NormalizedLandmarkList landmarks, 
+        //                 int img_width, int img_height);
 
         // Return the summation of left
         // and right eyes area

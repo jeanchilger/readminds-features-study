@@ -1,5 +1,7 @@
-#ifndef _READMINDS_FACE_H_
-#define _READMINDS_FACE_H_
+#ifndef _READMINDS_FEATURES_FACE_FACE_ANALYZER_H_
+#define _READMINDS_FEATURES_FACE_FACE_ANALYZER_H_
+
+#include <deque>
 
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "src/features/generic_analyzer.h"
@@ -16,37 +18,48 @@ class FaceAnalyzer : public GenericAnalyzer {
         FaceAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
                 int img_width, int img_height);
 
-        // landmarks_ setter
-        void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);
-
-        // Sets all needed attributes
-        void Initialize(int img_width, int img_height);
-        
-        void Initialize(mediapipe::NormalizedLandmarkList landmarks, 
-                        int img_width, int img_height);
-
-        // Gets the area of the polygon that contains all landmarks.
+        // Gets the area of face. This is calculated as 
+        // the area of the convex hull that contains all landmarks.
         double GetFaceArea();
 
-        // Get face motion
+        // 
         double GetFaceMotion();
 
     protected:
-        double f_face_area_;
-        double f_face_motion_;
-        int f_num_frames_motion_ = 50;
+        double face_area_ = -1;
+        double face_motion_ = -1;
 
-        // Calls all other update functions.
-        void Update();
+        int num_frames_motion_ = 50;
+        std::deque<mediapipe::NormalizedLandmarkList> last_anchors_;
 
         // Calculates the area of the convex hull that closes
         // the whole face.
+        //
+        // Relative to feature F5 in Fernando's paper.
         void CalculateFaceArea();
 
+        // Calculates the Euclidean distance between the last 
+        // `num_frames_motion` anchor landmarks. The distance is computed
+        // between the first anchor list and all others.
         //
+        // Represents the amount of movement the head perfored in a short
+        // period of time.
+        //
+        // Relative to feature F6 in Fernando's paper.
         void CalculateFaceMotion();
 
         void CalculateFacialCenterOfMass();
+        
+        // Calls all other update functions.
+        void Update() override;
+
+        // Updates the list containing the last `num_frames_motion_` anchor
+        // lists. If less than this number of frames have ocurred, it simply
+        // adds a new anchor list, otherwise it inserts the new and removes
+        // the oldest.
+        void UpdateLastAnchors();
+
+
 };
 
 #endif

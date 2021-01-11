@@ -8,28 +8,8 @@ EyeAnalyzer::EyeAnalyzer(int img_width, int img_height)
 
 EyeAnalyzer::EyeAnalyzer(mediapipe::NormalizedLandmarkList landmarks,
             int img_width, int img_height) 
-                : GenericAnalyzer(landmarks, img_width, img_height) {
-    Update();
-}   
+                : GenericAnalyzer(landmarks, img_width, img_height) {}   
 
-void EyeAnalyzer::SetLandmarks(mediapipe::NormalizedLandmarkList landmarks) {
-    GenericAnalyzer::SetLandmarks(landmarks);
-
-    Update();
-}
-
-void EyeAnalyzer::Initialize(int img_width, int img_height) {
-    GenericAnalyzer::Initialize(img_width, img_height);
-
-    Update();
-}
-
-void EyeAnalyzer::Initialize(mediapipe::NormalizedLandmarkList landmarks, 
-                               int img_width, int img_height) {
-    GenericAnalyzer::Initialize(landmarks, img_width, img_height);
-
-    Update();
-}
 
 void EyeAnalyzer::Update() {
     UpdateEyeInnerArea();

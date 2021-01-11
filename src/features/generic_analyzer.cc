@@ -73,9 +73,9 @@ void GenericAnalyzer::CalculateNormFactor() {
                     (int) floor(last_anchor.y() * img_height_)));
 }
 
-cv::Point CvtNormIntoCvPoint(mediapipe::NormalizedLandmark lmark) {
-    int x = (int) floor(lmark.x() * img_width_);
-    int y = (int) floor(lmark.y() * img_height_);
+cv::Point GenericAnalyzer::CvtNormIntoCvPoint(mediapipe::NormalizedLandmark landmark) {
+    int x = (int) floor(landmark.x() * img_width_);
+    int y = (int) floor(landmark.y() * img_height_);
 
     return cv::Point(x, y);
 }
