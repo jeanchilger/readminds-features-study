@@ -95,9 +95,14 @@ mediapipe::Status RunGraph() {
     mediapipe::NormalizedLandmarkList face_landmarks = output_landmark_vector[0];
     
     // Instantiate analyzers
-    MouthAnalyzer mouth_descriptor(face_landmarks, width, height);
-    FaceAnalyzer face_descriptor(face_landmarks, width, height);
-    EyeAnalyzer eye_descriptor(face_landmarks, width, height);
+    MouthAnalyzer mouth_descriptor(width, height);
+    mouth_descriptor.SetLandmarks(face_landmarks);
+
+    FaceAnalyzer face_descriptor(width, height);
+    face_descriptor.SetLandmarks(face_landmarks);
+
+    EyeAnalyzer eye_descriptor(width, height);
+    eye_descriptor.SetLandmarks(face_landmarks);
 
     // ===========================
     // F1
