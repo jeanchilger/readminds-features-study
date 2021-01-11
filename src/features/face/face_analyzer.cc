@@ -3,6 +3,7 @@
 #include "mediapipe/framework/port/opencv_core_inc.h"
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
 #include "src/features/face/face_analyzer.h"
+#include "src/features/eye/eye_analyzer.h"
 
 // FaceAnalyzer::FaceAnalyzer() : GenericAnalyzer() {}
 
@@ -61,6 +62,10 @@ void FaceAnalyzer::CalculateFaceArea() {
 }
 
 void FaceAnalyzer::CalculateFaceMotion() {
+
+}
+
+void FaceAnalyzer::CalculateFacialCenterOfMass() {
 
 }
 

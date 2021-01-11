@@ -46,7 +46,7 @@ class FaceAnalyzer : public GenericAnalyzer {
         //
         void CalculateFaceMotion();
 
-
+        void CalculateFacialCenterOfMass();
 };
 
 #endif

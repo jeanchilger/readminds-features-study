@@ -46,10 +46,10 @@ double EyeAnalyzer::GetEyebrow() {
 
 void EyeAnalyzer::UpdateEyeInnerArea() {
     GenerateEyeContours();
-    eye_area_ = ComputeEyesContoursArea();
+    eye_area_ = CalculateEyesContoursArea();
 }
 
-double EyeAnalyzer::ComputeEyesContoursArea() {
+double EyeAnalyzer::CalculateEyesContoursArea() {
     double right_eye_area = cv::contourArea(eye_right_contour_);
     double left_eye_area  = cv::contourArea(eye_left_contour_);
 
@@ -76,7 +76,11 @@ void EyeAnalyzer::GenerateEyeContours() {
     }
 }
 
-void EyeAnalyzer::UpdateEyebrow() {
+void EyeAnalyzer::UpdateEyebrow() {    
+    eyebrow_anchor_dist_sum_ = CalculateEyebrowActivity();
+}
+
+double EyeAnalyzer::CalculateEyebrowActivity() {
     double distances_sum = 0;
 
     double anchor_x, anchor_y, x, y;
@@ -105,5 +109,5 @@ void EyeAnalyzer::UpdateEyebrow() {
         }
     }
 
-    eyebrow_anchor_dist_sum_ = distances_sum / norm_factor_;
+    return distances_sum / norm_factor_;
 }

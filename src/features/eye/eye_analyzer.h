@@ -84,27 +84,31 @@ class EyeAnalyzer : public GenericAnalyzer {
         // Stores the features values
         double eye_area_, eyebrow_anchor_dist_sum_;
 
-        // Updates all feature values each time
-        // a new landmark list is set
-        void Update();
+        // Calculate the eyebrow activity (F4)
+        double CalculateEyebrowActivity();
 
-        // Computes the eye area for landmarks which are
-        // closer to the eye
-        // Relative to feature F3 in Fernando's paper
-        void UpdateEyeInnerArea();
+        // Compute the right and left eye area
+        // using contourArea() from OpenCV
+        // and adds this two values
+        double CalculateEyesContoursArea();
 
-        // Computes the eyebrow landmarks distance sum
-        // Relative to feature F4 in Fernando's paper
-        void UpdateEyebrow();
-        
         // Creates two vectors of cv::Points that
         // describes eyes contours for further area
         // calculation.
         void GenerateEyeContours();
 
-        // Compute the right and left eye area
-        // using contourArea() from OpenCV
-        // and adds this two values
-        double ComputeEyesContoursArea();
+        // Updates all feature values each time
+        // a new landmark list is set
+        void Update();
+
+        // Updates eyebrow landmarks distance sum
+        // Relative to feature F4 in Fernando's paper
+        void UpdateEyebrow();
+
+        // Computes the eye area for landmarks which are
+        // closer to the eye
+        // Relative to feature F3 in Fernando's paper
+        void UpdateEyeInnerArea();
+        
 };
 #endif
