@@ -56,15 +56,6 @@ class EyeAnalyzer : public GenericAnalyzer {
         EyeAnalyzer(mediapipe::NormalizedLandmarkList list,
                     int width, int height);
 
-        // Landmarks list setter
-        // void SetLandmarks(mediapipe::NormalizedLandmarkList landmarks);
-
-        // // Sets all needed attributes
-        // void Initialize(int img_width, int img_height);
-        
-        // void Initialize(mediapipe::NormalizedLandmarkList landmarks, 
-        //                 int img_width, int img_height);
-
         // Return the summation of left
         // and right eyes area
         double GetEyeInnerArea();
@@ -99,7 +90,7 @@ class EyeAnalyzer : public GenericAnalyzer {
 
         // Updates all feature values each time
         // a new landmark list is set
-        void Update();
+        void Update() override;
 
         // Updates eyebrow landmarks distance sum
         // Relative to feature F4 in Fernando's paper

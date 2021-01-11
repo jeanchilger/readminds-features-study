@@ -10,12 +10,6 @@ EyeAnalyzer::EyeAnalyzer(mediapipe::NormalizedLandmarkList landmarks,
             int img_width, int img_height) 
                 : GenericAnalyzer(landmarks, img_width, img_height) {}   
 
-
-void EyeAnalyzer::Update() {
-    UpdateEyeInnerArea();
-    UpdateEyebrow();
-}
-
 double EyeAnalyzer::GetEyeInnerArea() {
     return eye_area_;
 }
@@ -90,4 +84,9 @@ double EyeAnalyzer::CalculateEyebrowActivity() {
     }
 
     return distances_sum / norm_factor_;
+}
+
+void EyeAnalyzer::Update() {
+    UpdateEyeInnerArea();
+    UpdateEyebrow();
 }

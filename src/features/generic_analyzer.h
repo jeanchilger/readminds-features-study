@@ -4,6 +4,8 @@
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "mediapipe/framework/port/opencv_core_inc.h"
 
+const int NTOTAL_LANDMARKS = 468;
+
 const int ANCHOR_LANDMARKS[] = {
     1, 4, 5, 195, 197, 6,
 };
@@ -63,12 +65,7 @@ class GenericAnalyzer {
 
         // Computes the eucliand norm for
         // a given coordinate
-        double EuclideanNorm(double x, double y);
-
-        // Pure virtual function responsible for updating all
-        // feature values within a analyzer.
-        virtual void Update() = 0;
-
+        double EuclideanNorm(cv::Point landmark);
 
 };
 

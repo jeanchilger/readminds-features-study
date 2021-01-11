@@ -22,6 +22,10 @@ double FaceAnalyzer::GetFaceMotion() {
     return face_motion_;
 }
 
+double FaceAnalyzer::GetFaceCOM() {
+    return face_com_;
+}
+
 // TODO: This may be a ineffective approach.
 // Selecting only the outer landmarks could be faster.
 void FaceAnalyzer::CalculateFaceArea() {
@@ -29,7 +33,7 @@ void FaceAnalyzer::CalculateFaceArea() {
     std::vector<cv::Point> hull;
 
     int x, y;
-    for (int i=0; i < 468; i ++) {
+    for (int i=0; i < NTOTAL_LANDMARKS; i ++) {
         mediapipe::NormalizedLandmark landmark = landmarks_.landmark(i);
         
         all_points.push_back(CvtNormIntoCvPoint(landmark));
@@ -87,12 +91,19 @@ void FaceAnalyzer::UpdateLastAnchors() {
 }
 
 void FaceAnalyzer::CalculateFacialCenterOfMass() {
-
+    face_com_ = 0;
+    for (int i=0; i < NTOTAL_LANDMARKS; i++) {
+        mediapipe::NormalizedLandmark lmark = landmarks_.landmark(i);
+        face_com_ += EuclideanNorm(CvtNormIntoCvPoint(lmark));
+    }
+    
+    face_com_ = face_com_ / NTOTAL_LANDMARKS / norm_factor_;
 }
 
 void FaceAnalyzer::Update() {
     UpdateLastAnchors();
     CalculateFaceArea();
+    CalculateFacialCenterOfMass();
 
     if (last_anchors_.size() == num_frames_motion_) {
         CalculateFaceMotion();

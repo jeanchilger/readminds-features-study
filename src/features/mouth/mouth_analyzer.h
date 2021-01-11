@@ -52,7 +52,7 @@ class MouthAnalyzer : public GenericAnalyzer {
         double mouth_corner_;
 
         // Calls all calculation functions.
-        void Update();
+        void Update() override;
 
         // Calculates the area of the mouth region.
         void CalculateMouthArea();

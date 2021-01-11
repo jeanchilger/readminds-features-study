@@ -134,7 +134,12 @@ mediapipe::Status RunGraph() {
     double f5 = face_descriptor.GetFaceArea();
     std::cout << "F5: " << f5 << std::endl;
 
-    
+    //============================
+    // F7
+    // ===========================
+    double f7 = face_descriptor.GetFaceCOM();
+    std::cout << "F7: " << f7 << std::endl;
+
     MP_RETURN_IF_ERROR(graph.CloseInputStream("input_image"));
 
     return graph.WaitUntilDone();

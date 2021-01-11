@@ -25,9 +25,12 @@ class FaceAnalyzer : public GenericAnalyzer {
         // 
         double GetFaceMotion();
 
+        double GetFaceCOM();
+
     protected:
         double face_area_ = -1;
         double face_motion_ = -1;
+        double face_com_ = -1;
 
         int num_frames_motion_ = 50;
         std::deque<mediapipe::NormalizedLandmarkList> last_anchors_;
@@ -48,8 +51,10 @@ class FaceAnalyzer : public GenericAnalyzer {
         // Relative to feature F6 in Fernando's paper.
         void CalculateFaceMotion();
 
+        // Compute the center of mass 
+        // Overral movement of all landmarks
         void CalculateFacialCenterOfMass();
-        
+
         // Calls all other update functions.
         void Update() override;
 

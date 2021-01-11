@@ -79,3 +79,7 @@ cv::Point GenericAnalyzer::CvtNormIntoCvPoint(mediapipe::NormalizedLandmark land
 
     return cv::Point(x, y);
 }
+
+double GenericAnalyzer::EuclideanNorm(cv::Point landmark) {
+    return std::sqrt(pow(landmark.x, 2) + pow(landmark.y, 2));
+}
