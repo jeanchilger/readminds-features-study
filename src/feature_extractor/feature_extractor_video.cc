@@ -138,6 +138,14 @@ mediapipe::Status RunVideoReader() {
                 std::cout << "F6: " << f6 << std::endl;
             }
 
+            //============================
+            // F7
+            // ===========================
+            double f7 = face_descriptor.GetFaceCOM();
+            if (f7 > 0) {
+                std::cout << "F7: " << f7 << std::endl;
+            }
+
             std::cout << "======================================\n\n";
         }   
     }

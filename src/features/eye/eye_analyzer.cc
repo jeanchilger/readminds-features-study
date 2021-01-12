@@ -18,16 +18,13 @@ double EyeAnalyzer::GetEyebrow() {
     return eyebrow_anchor_dist_sum_;
 }
 
-void EyeAnalyzer::UpdateEyeInnerArea() {
-    GenerateEyeContours();
-    eye_area_ = CalculateEyesContoursArea();
-}
-
 double EyeAnalyzer::CalculateEyesContoursArea() {
+    GenerateEyeContours();
     double right_eye_area = cv::contourArea(eye_right_contour_);
     double left_eye_area  = cv::contourArea(eye_left_contour_);
+    eye_area_ = right_eye_area + left_eye_area;
 
-    return right_eye_area + left_eye_area;
+    return eye_area_;
 }
 
 void EyeAnalyzer::GenerateEyeContours() {
@@ -50,15 +47,11 @@ void EyeAnalyzer::GenerateEyeContours() {
     }
 }
 
-void EyeAnalyzer::UpdateEyebrow() {    
-    eyebrow_anchor_dist_sum_ = CalculateEyebrowActivity();
-}
-
 double EyeAnalyzer::CalculateEyebrowActivity() {
     double distances_sum = 0;
 
     double anchor_x, anchor_y, x, y;
-    for (int a : F4_ANCHORS) {
+    for (int a : ANCHOR_LANDMARKS) {
         mediapipe::NormalizedLandmark anchor_landmark = landmarks_.landmark(a);
         
         anchor_x = anchor_landmark.x() * img_width_;
@@ -82,11 +75,12 @@ double EyeAnalyzer::CalculateEyebrowActivity() {
             distances_sum += EuclideanDistance(anchor_x, anchor_y, x, y);
         }
     }
-
-    return distances_sum / norm_factor_;
+    eyebrow_anchor_dist_sum_ = distances_sum / norm_factor_;
+    
+    return eyebrow_anchor_dist_sum_;
 }
 
 void EyeAnalyzer::Update() {
-    UpdateEyeInnerArea();
-    UpdateEyebrow();
+    CalculateEyebrowActivity();
+    CalculateEyesContoursArea();
 }

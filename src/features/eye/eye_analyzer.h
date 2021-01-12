@@ -37,10 +37,10 @@ const int EYE_BROW_RIGHT_LOWER[] = {
     300, 283, 282, 295, 285
 };
 
-/*
-    Class that computes eye related features,
-    e.g. eye area (F3) and eyebrow activity (F4).
-*/
+
+// Class that computes eye related features,
+// e.g. eye area (F3) and eyebrow activity (F4).
+//
 class EyeAnalyzer : public GenericAnalyzer {
     
     public:
@@ -90,16 +90,6 @@ class EyeAnalyzer : public GenericAnalyzer {
 
         // Updates all feature values each time
         // a new landmark list is set
-        void Update() override;
-
-        // Updates eyebrow landmarks distance sum
-        // Relative to feature F4 in Fernando's paper
-        void UpdateEyebrow();
-
-        // Computes the eye area for landmarks which are
-        // closer to the eye
-        // Relative to feature F3 in Fernando's paper
-        void UpdateEyeInnerArea();
-        
+        void Update() override;        
 };
 #endif

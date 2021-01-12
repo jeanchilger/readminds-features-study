@@ -10,12 +10,6 @@ const int ANCHOR_LANDMARKS[] = {
     1, 4, 5, 195, 197, 6,
 };
 
-// F4 feature anchors, landmarks
-// 1 and 4 was not needed
-const int F4_ANCHORS[] = {
-    5, 195, 197, 6,
-};
-
 // Face object providing generic data used by
 // other features, such as A and K.
 class GenericAnalyzer {
