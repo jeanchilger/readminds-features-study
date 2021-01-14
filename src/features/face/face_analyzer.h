@@ -22,9 +22,11 @@ class FaceAnalyzer : public GenericAnalyzer {
         // the area of the convex hull that contains all landmarks.
         double GetFaceArea();
 
-        // 
+        // Gets face motion. This is computed as mean of the norm
+        // of anchor landmarks taken in a number of frames.
         double GetFaceMotion();
 
+        // Gets face center of mass.
         double GetFaceCOM();
 
     protected:

@@ -5,7 +5,6 @@
 #include "mediapipe/framework/port/opencv_core_inc.h"
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
 
-// FaceAnalyzer::FaceAnalyzer() : GenericAnalyzer() {}
 
 FaceAnalyzer::FaceAnalyzer(int img_width, int img_height)
     : GenericAnalyzer(img_width, img_height) {}
