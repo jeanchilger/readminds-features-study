@@ -14,3 +14,16 @@ cc_binary(
         "//mediapipe/framework/formats:image_frame_opencv",
     ]
 )
+
+cc_binary(
+    name = "array_to_csvrow_runner",
+    srcs = ["array_to_csvrow_runner.cc"],
+    deps = [
+        "//src/calculators:array_to_csvrow_calculator",
+        "//mediapipe/framework:calculator_graph",
+        "//mediapipe/framework/port:logging",
+        "//mediapipe/framework/port:parse_text_proto",
+        "//mediapipe/framework/port:status",
+        "//mediapipe/framework/port:commandlineflags",
+    ]
+)

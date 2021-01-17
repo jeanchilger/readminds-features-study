@@ -45,7 +45,8 @@ ImageFormat::Format GetImageFormat(int num_channels) {
 
 REGISTER_CALCULATOR(VideoReaderCalculator);
 
-::mediapipe::Status VideoReaderCalculator::GetContract(CalculatorContract* cc) {
+::mediapipe::Status VideoReaderCalculator::GetContract(
+        CalculatorContract* cc) {
     cc->InputSidePackets().Tag("VIDEO_STREAM").Set<std::string>();
     cc->Outputs().Tag("IMAGE").Set<ImageFrame>();
 
@@ -97,7 +98,10 @@ REGISTER_CALCULATOR(VideoReaderCalculator);
 }
 
 ::mediapipe::Status VideoReaderCalculator::Process(CalculatorContext* cc) {
-    auto image_frame = absl::make_unique<ImageFrame>(format_, width_, height_, 1);
+    auto image_frame = absl::make_unique<ImageFrame>(format_, 
+                                                     width_, 
+                                                     height_, 
+                                                     1);
 
     Timestamp timestamp(cap_->get(cv::CAP_PROP_POS_MSEC) * 1000);
 
