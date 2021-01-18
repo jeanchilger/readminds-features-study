@@ -1,5 +1,5 @@
-#ifndef _READMINDS_FEATURES_MOUTH_MOUTH_ANALYZER_H_
-#define _READMINDS_FEATURES_MOUTH_MOUTH_ANALYZER_H_
+#ifndef READMINDS_FEATURES_MOUTH_MOUTH_ANALYZER_H_
+#define READMINDS_FEATURES_MOUTH_MOUTH_ANALYZER_H_
 
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "src/features/generic_analyzer.h"
