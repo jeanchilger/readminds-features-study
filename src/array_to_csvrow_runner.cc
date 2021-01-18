@@ -3,6 +3,8 @@
 #include "mediapipe/framework/port/parse_text_proto.h"
 #include "mediapipe/framework/port/status.h"
 
+#include "src/calculators/array_to_csvrow_calculator.pb.h"
+
 
 /*
     Build: 
@@ -21,6 +23,12 @@ mediapipe::Status RunVideoReader() {
         node {
             calculator: "ArrayFloatToCsvRowCalculator"
             input_stream: "in"
+            node_options: {
+                [type.googleapis.com/mediapipe.ArrayToCsvRowCalculatorOptions] {
+                    file_name: "example_file.csv"
+                    header: ["as", "sa", "faa"]
+                }
+            }
         }
     )");
 
@@ -29,7 +37,27 @@ mediapipe::Status RunVideoReader() {
 
     MP_RETURN_IF_ERROR(graph.StartRun({}));
 
-    return ::mediapipe::OkStatus();
+    std::vector<float> input;
+    for (int i=0; i < 10; i++) {
+        for (int j=0; j < 3; j++) {
+            input.push_back(i * j);
+        }
+
+        graph.AddPacketToInputStream(
+                "in", MakePacket<std::vector<float>>(input).At(Timestamp(i)));
+
+        // for (int j=0; j < 3; j++) {
+        //     std::cout << input.at(j) << ", ";
+        // }
+
+        input.clear();
+
+        // std::cout << "\n@@@@@@@@@@@@@@@@@@@@@@@@@: " << i << std::endl << std::endl;
+    }
+
+    MP_RETURN_IF_ERROR(graph.CloseInputStream("in"));
+
+    return graph.WaitUntilDone();
 }
 
 } // namespace
