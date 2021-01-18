@@ -39,6 +39,7 @@ cc_library(
         "//visibility:public"
     ],
     deps = [
+        ":array_to_csvrow_calculator_cc_proto",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
