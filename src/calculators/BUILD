@@ -23,8 +23,8 @@ cc_library(
 )
 
 mediapipe_proto_library(
-    name = "array_to_csvrow_calculator_proto",
-    srcs = ["array_to_csvrow_calculator.proto"],
+    name = "array_to_csv_row_calculator_proto",
+    srcs = ["array_to_csv_row_calculator.proto"],
     deps = [
         "//mediapipe/framework:calculator_options_proto",
         "//mediapipe/framework:calculator_proto",
@@ -32,14 +32,14 @@ mediapipe_proto_library(
 )
 
 cc_library(
-    name = "array_to_csvrow_calculator",
-    srcs = ["array_to_csvrow_calculator.cc"],
-    hdrs = ["array_to_csvrow_calculator.h"],
+    name = "array_to_csv_row_calculator",
+    srcs = ["array_to_csv_row_calculator.cc"],
+    hdrs = ["array_to_csv_row_calculator.h"],
     visibility = [
         "//visibility:public"
     ],
     deps = [
-        ":array_to_csvrow_calculator_cc_proto",
+        ":array_to_csv_row_calculator_cc_proto",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",

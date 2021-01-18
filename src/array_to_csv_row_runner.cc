@@ -3,7 +3,7 @@
 #include "mediapipe/framework/port/parse_text_proto.h"
 #include "mediapipe/framework/port/status.h"
 
-#include "src/calculators/array_to_csvrow_calculator.pb.h"
+#include "src/calculators/array_to_csv_row_calculator.pb.h"
 
 
 /*
@@ -21,11 +21,11 @@ mediapipe::Status RunVideoReader() {
             R"(
         input_stream: "in"
         node {
-            calculator: "ArrayFloatToCsvRowCalculator"
+            calculator: "ArrayFloatVectorToCsvRowCalculator"
             input_stream: "in"
             node_options: {
                 [type.googleapis.com/mediapipe.ArrayToCsvRowCalculatorOptions] {
-                    file_name: "example_file.csv"
+                    file_path: "example_file.csv"
                     header: ["as", "sa", "faa"]
                 }
             }
@@ -45,10 +45,6 @@ mediapipe::Status RunVideoReader() {
 
         graph.AddPacketToInputStream(
                 "in", MakePacket<std::vector<float>>(input).At(Timestamp(i)));
-
-        // for (int j=0; j < 3; j++) {
-        //     std::cout << input.at(j) << ", ";
-        // }
 
         input.clear();
 

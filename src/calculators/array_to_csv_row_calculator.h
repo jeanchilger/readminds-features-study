@@ -25,7 +25,7 @@ namespace mediapipe {
 // typedef ArrayToCsvRowCalculator<std::vector<float>> 
 //        ArrayFloatVectorToCsvRowCalculator;
 // REGISTER_CALCULATOR(ArrayFloatVectorToCsvRowCalculator);
-template <class C>
+template <typename C>
 class ArrayToCsvRowCalculator : public CalculatorBase {
 
     public:
@@ -65,10 +65,11 @@ class ArrayToCsvRowCalculator : public CalculatorBase {
             ::std::fstream output_csv_file(file_path_, ::std::ios_base::app);
             
             for (int i=0; i < cc->Inputs().NumEntries(); i++) {
-                ::std::vector<float> input = cc->Inputs().Index(i).Get<C>();
+                auto begin = ::std::begin(cc->Inputs().Index(i).Get<C>());
+                auto end = ::std::end(cc->Inputs().Index(i).Get<C>());
 
-                for (int j=0; j < input.size(); j++) {
-                    output_csv_file << input.at(j) << ",";
+                for (; begin != end; ++begin) {
+                    output_csv_file << *begin << ",";
                 }
 
                 output_csv_file << "\n";

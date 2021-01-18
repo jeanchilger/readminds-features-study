@@ -16,10 +16,10 @@ cc_binary(
 )
 
 cc_binary(
-    name = "array_to_csvrow_runner",
-    srcs = ["array_to_csvrow_runner.cc"],
+    name = "array_to_csv_row_runner",
+    srcs = ["array_to_csv_row_runner.cc"],
     deps = [
-        "//src/calculators:array_to_csvrow_calculator",
+        "//src/calculators:array_to_csv_row_calculator",
         "//mediapipe/framework:calculator_graph",
         "//mediapipe/framework/port:logging",
         "//mediapipe/framework/port:parse_text_proto",
