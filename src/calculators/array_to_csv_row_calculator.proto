@@ -9,6 +9,6 @@ message ArrayToCsvRowCalculatorOptions {
         optional ArrayToCsvRowCalculatorOptions ext = 86468916;
     }
 
-    required string file_name = 1;
+    required string file_path = 1;
     repeated string header = 2;
 }
