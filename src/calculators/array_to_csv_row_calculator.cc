@@ -6,19 +6,19 @@
 namespace mediapipe {
 
 typedef ArrayToCsvRowCalculator<::std::vector<int>> 
-        ArrayIntVectorToCsvRowCalculator;
-REGISTER_CALCULATOR(ArrayIntVectorToCsvRowCalculator);
+        IntVectorToCsvRowCalculator;
+REGISTER_CALCULATOR(IntVectorToCsvRowCalculator);
 
 // typedef ArrayToCsvRowCalculator<int*> 
 //         ArrayIntArrayToCsvRowCalculator;
 // REGISTER_CALCULATOR(ArrayIntArrayToCsvRowCalculator);
 
-typedef ArrayToCsvRowCalculator<::std::vector<float>> 
-        ArrayFloatVectorToCsvRowCalculator;
-REGISTER_CALCULATOR(ArrayFloatVectorToCsvRowCalculator);
+typedef ArrayToCsvRowCalculator<::std::vector<double>> 
+        DoubleVectorToCsvRowCalculator;
+REGISTER_CALCULATOR(DoubleVectorToCsvRowCalculator);
 
 typedef ArrayToCsvRowCalculator<::std::vector<::std::string>> 
-        ArrayStringVectorToCsvRowCalculator;
-REGISTER_CALCULATOR(ArrayStringVectorToCsvRowCalculator);
+        StringVectorToCsvRowCalculator;
+REGISTER_CALCULATOR(StringVectorToCsvRowCalculator);
 
 } // namespace mediapipe

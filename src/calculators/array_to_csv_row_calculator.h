@@ -11,9 +11,6 @@
 
 #include "src/calculators/array_to_csv_row_calculator.pb.h"
 
-// Class documentation
-//
-
 namespace mediapipe {
 
 // Writes the contents of a given container to a row of a csv file.

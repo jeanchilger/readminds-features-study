@@ -6,12 +6,12 @@
 #include "src/calculators/array_to_csv_row_calculator.pb.h"
 
 
-/*
-    Build: 
-        bazel build --define MEDIAPIPE_DISABLE_GPU=1 //src:array_to_csvrow_runner --check_visibility=false
-    RUN:
-        bazel-bin/src/array_to_csvrow_runner
-*/
+
+// Build: 
+//     bazel build --define MEDIAPIPE_DISABLE_GPU=1 //src:array_to_csv_row_runner --check_visibility=false
+// Run:
+//     bazel-bin/src/array_to_csv_row_runner
+
 
 namespace mediapipe {
 
@@ -21,7 +21,7 @@ mediapipe::Status RunVideoReader() {
             R"(
         input_stream: "in"
         node {
-            calculator: "ArrayFloatVectorToCsvRowCalculator"
+            calculator: "DoubleVectorToCsvRowCalculator"
             input_stream: "in"
             node_options: {
                 [type.googleapis.com/mediapipe.ArrayToCsvRowCalculatorOptions] {
@@ -37,14 +37,14 @@ mediapipe::Status RunVideoReader() {
 
     MP_RETURN_IF_ERROR(graph.StartRun({}));
 
-    std::vector<float> input;
+    std::vector<double> input;
     for (int i=0; i < 10; i++) {
         for (int j=0; j < 3; j++) {
             input.push_back(i * j);
         }
 
         graph.AddPacketToInputStream(
-                "in", MakePacket<std::vector<float>>(input).At(Timestamp(i)));
+                "in", MakePacket<std::vector<double>>(input).At(Timestamp(i)));
 
         input.clear();
 
