@@ -1,5 +1,5 @@
-#ifndef _READMINDS_FEATURES_FACE_H_
-#define _READMINDS_FEATURES_FACE_H_
+#ifndef READMINDS_FEATURES_GENERIC_H_
+#define READMINDS_FEATURES_GENERIC_H_
 
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "mediapipe/framework/port/opencv_core_inc.h"

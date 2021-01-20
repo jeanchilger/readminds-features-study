@@ -1,3 +1,6 @@
+#ifndef READMINDS_CALCULATORS_VIDEO_READER_CALCULATOR_ 
+#define READMINDS_CALCULATORS_VIDEO_READER_CALCULATOR_ 
+
 #include <stdlib.h>
 
 #include "mediapipe/framework/calculator_framework.h"
@@ -31,3 +34,5 @@ class VideoReaderCalculator : public CalculatorBase {
 };
 
 } // namespace
+
+#endif

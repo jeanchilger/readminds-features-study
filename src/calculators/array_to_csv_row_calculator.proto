@@ -1,0 +1,14 @@
+syntax = "proto2";
+
+package mediapipe;
+
+import "mediapipe/framework/calculator.proto";
+
+message ArrayToCsvRowCalculatorOptions {
+    extend CalculatorOptions {
+        optional ArrayToCsvRowCalculatorOptions ext = 86468916;
+    }
+
+    required string file_path = 1;
+    repeated string header = 2;
+}

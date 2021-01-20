@@ -63,4 +63,8 @@
 
 ### Other ###
 # Private or sensitive data
-private-data/
+data/private/
+
+# Everything from dataset is ignored but public subfolder
+data/dataset/*
+!data/dataset/public
