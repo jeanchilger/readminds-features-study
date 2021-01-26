@@ -13,6 +13,7 @@
 
 from kerastuner.tuners import RandomSearch
 from models.tunning import TunableModel
+import numpy as np
 from preprocessing import normalize_and_encode
 from tensorflow import keras
 from utils.dataset import (
@@ -101,7 +102,13 @@ def calibration_validation_split(
     validation_data = dataset[dataset[game_type_header].str.contains(
             validation_game_substr)]
 
-    return calibration_data, validation_data
+    train_X, train_y = split_features_label(
+            calibration_data, feature_headers, label_header)
+    
+    test_X, test_y = split_features_label(
+            validation_data, feature_headers, label_header)
+
+    return train_X, train_y, test_X, test_y
 
 
 if __name__ == "__main__":
@@ -127,13 +134,7 @@ if __name__ == "__main__":
 
     # Split dataset into calibration and validation 
     # data (aka training and testing data)
-    calibration_data, validation_data = calibration_validation_split(dataset)
-
-    train_X, train_y = split_features_label(
-            calibration_data, feature_headers, label_header)
-    
-    test_X, test_y = split_features_label(
-            validation_data, feature_headers, label_header)
+    train_X, train_y, test_X, test_y = calibration_validation_split(dataset)
 
     # NOTE: I noticed swedish guys have pre-trained on all subjects 
     # including those without Mario game entry. Later they've specialized
@@ -154,6 +155,7 @@ if __name__ == "__main__":
             callbacks=[keras.callbacks.EarlyStopping(patience=20)])
 
     generic_model = tuner.get_best_models(num_models=1)[0]
+    generic_model.save("best_model")
 
     print(generic_model.summary())
 
@@ -164,3 +166,29 @@ if __name__ == "__main__":
             if any(dataset[
                     dataset[subject_no_header] == subject_id][game_type_header]
                     .str.contains("Mario"))]
+
+    # Specialize model for each subject
+    scores = []
+    for subject_id in testable_subjects:
+        subject_model = keras.models.load_model("best_model")
+
+        # Get subject specific data
+        train_X, train_y, test_X, test_y = calibration_validation_split(
+                dataset[dataset[subject_no_header] == subject_id])
+
+        subject_model.fit(
+                train_X, train_y, epochs=1000, 
+                batch_size=500, validation_data=(test_X, test_y),
+                callbacks=[keras.callbacks.EarlyStopping(
+                        patience=early_stop_patience)], verbose=False)
+
+        score = subject_model.evaluate(test_X, test_y, verbose=False)
+        scores.append(score)
+
+        print(f"Accuracy: { round(score[1]*100, 2) }%")
+
+    scores = np.array(scores)
+    print(scores.shape)
+    print("@"*50)
+    print("ACC @ Mean:", np.mean(scores, axis=0))
+    print("@"*50)
