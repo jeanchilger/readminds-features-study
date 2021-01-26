@@ -12,7 +12,7 @@ class TunableModel(HyperModel):
         model = keras.Sequential()
 
         # Input Layer
-        model.add(keras.Input(shape=input_size))
+        model.add(keras.Input(shape=self.input_size))
 
         # Hidden Layers
         num_layers = hp.Int("num_layers", 0, 2)
@@ -28,7 +28,7 @@ class TunableModel(HyperModel):
 
         model.compile(
                 optimizer="adam", loss="sparse_categorical_crossentropy",
-                metrics=["accuracy", "recall"])
+                metrics=["accuracy"])
 
         return model
 
