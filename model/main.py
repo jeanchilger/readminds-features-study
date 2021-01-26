@@ -11,10 +11,13 @@
 - 10. Train eliminating 1 feature at a time (L 545-553);
 """
 
+from kerastuner.tuners import RandomSearch
+from models.tunning import TunableModel
+from preprocessing import normalize_and_encode
+from tensorflow import keras
 from utils.dataset import (
     DataProperties,
     load_data_from_dir,
-    normalize_and_encode,
     split_features_label,
 )
 
@@ -126,8 +129,38 @@ if __name__ == "__main__":
     # data (aka training and testing data)
     calibration_data, validation_data = calibration_validation_split(dataset)
 
-    calibration_X, calibration_y = split_features_label(
+    train_X, train_y = split_features_label(
             calibration_data, feature_headers, label_header)
     
-    validation_X, validation_y = split_features_label(
+    test_X, test_y = split_features_label(
             validation_data, feature_headers, label_header)
+
+    # NOTE: I noticed swedish guys have pre-trained on all subjects 
+    # including those without Mario game entry. Later they've specialized
+    # the model for each subject that has Mario entry. In other words we
+    # have: len(train_data) + len(test_data) < len(dataset).
+
+    # Creates the generic, unspecialized, model
+    tunable_model = TunableModel(
+            input_size=len(train_X[0]), 
+            num_classes=len(dataset[label_header].unique()))
+    
+    tuner = RandomSearch(
+            tunable_model, objective="val_accuracy", 
+            max_trials=20)
+    tuner.search(
+            train_X, train_y, epochs=100, 
+            batch_size=100, validation_data=(test_X, test_y),
+            callbacks=[keras.callbacks.EarlyStopping(patience=20)])
+
+    generic_model = tuner.get_best_models(num_models=1)[0]
+
+    print(generic_model.summary())
+
+    # Get subjects that has Mario entries
+    testable_subjects = [
+            subject_id 
+            for subject_id in dataset[subject_no_header].unique()
+            if any(dataset[
+                    dataset[subject_no_header] == subject_id][game_type_header]
+                    .str.contains("Mario"))]
