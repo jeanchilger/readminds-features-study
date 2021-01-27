@@ -20,6 +20,6 @@ def normalize_and_encode(dataset, feature_headers, label_header, norm="l2"):
     dataset[label_header] = label_encoder.transform(dataset[label_header])
 
     for header in feature_headers:
-        dataset[header] = normalize([dataset[header]], norm=norm)
+        dataset[header] = normalize([dataset[header]], norm=norm)[0]
 
     return dataset

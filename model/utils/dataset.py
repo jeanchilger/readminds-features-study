@@ -1,6 +1,7 @@
 """
 """
 
+import numpy as np
 import pandas as pd
 from pathlib import Path
     
@@ -55,7 +56,7 @@ def split_features_label(dataset, feature_headers, label_header):
     dataset_X = dataset[feature_headers]
     dataset_y = dataset[label_header]
 
-    return dataset_X, dataset_y
+    return np.array(dataset_X), np.array(dataset_y)
 
 
 #############################################################################
@@ -81,8 +82,10 @@ class DataProperties:
 
         Args:
             file_name ([type]): [description]
-            window_size_prefix (str, optional): [description]. Defaults to "rppg".
-            initial_cutoff_prefix (str, optional): [description]. Defaults to "igcali".
+            window_size_prefix (str, optional): [description]. 
+                Defaults to "rppg".
+            initial_cutoff_prefix (str, optional): [description]. 
+                Defaults to "igcali".
 
         Returns:
             [type]: [description]
