@@ -2,11 +2,14 @@ from kerastuner import HyperModel
 from kerastuner.tuners import RandomSearch
 from tensorflow import keras
 
+from tensorflow.keras import backend as K
+
 
 class TunableModel(HyperModel):
-    def __init__(self, input_size, num_classes):
+    def __init__(self, input_size, num_classes, metrics=["acc"]):
         self.input_size = input_size
         self.num_classes = num_classes
+        self.metrics = metrics
 
     def build(self, hp):
         model = keras.Sequential()
