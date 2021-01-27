@@ -208,3 +208,8 @@ data/private/
 # Everything from dataset is ignored but public subfolder
 data/dataset/*
 !data/dataset/public
+
+# Models generated during tunning and saving
+readminds_model_tunning
+best_model
+readminds_trained_models
