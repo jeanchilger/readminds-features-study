@@ -3,11 +3,6 @@ import pandas as pd
 from pathlib import Path
 
 
-#############################################################################
-# Functions goes here
-#############################################################################
-
-
 def load_data_from_dir(directory, data_properties=None, pattern="**/*.csv"):
     """Reads data from an entire directory.
 
@@ -56,10 +51,6 @@ def split_features_label(dataset, feature_headers, label_header):
 
     return np.array(dataset_X), np.array(dataset_y)
 
-
-#############################################################################
-# Classes goes here
-#############################################################################
 
 class DataProperties:
     def __init__(

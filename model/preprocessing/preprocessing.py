@@ -2,7 +2,7 @@ from sklearn.preprocessing import normalize, LabelEncoder
 
 
 def normalize_and_encode(dataset, feature_headers, label_header, norm="l2"):
-    """[summary]
+    """Normalize dataset and encode labels.
 
     Args:
         dataset (pandas.Dataframe): Input dataset.
