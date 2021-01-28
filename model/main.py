@@ -11,16 +11,24 @@
 - 10. Train eliminating 1 feature at a time (L 545-553);
 """
 
-from kerastuner.tuners import RandomSearch
-from models.tunning import TunableModel
 import numpy as np
+
+from evaluation.metrics import recall as recall_m, precision, f1_score
+from kerastuner.tuners import RandomSearch
+# from models.tunning import TunableModel
+from models.nn import create_model
 from preprocessing import normalize_and_encode
 from tensorflow import keras
+from utils import set_random_state
+from utils import console
 from utils.dataset import (
     DataProperties,
     load_data_from_dir,
     split_features_label,
 )
+
+# Set python hash and frameworks' random seed to a comon value
+set_random_state(seed=0)
 
 # Don't change these values
 # Facial features stored in the data, combine facial measurement type and 
@@ -78,7 +86,7 @@ early_stop_patience = 100
 
 
 def calibration_validation_split(
-        dataset, game_type_header="game", 
+        dataset, game_type_header="game",
         validation_game_substr="Mario"):
     """Splits a dataset into two.
 
@@ -111,6 +119,135 @@ def calibration_validation_split(
     return train_X, train_y, test_X, test_y
 
 
+def run_subject_model_experiment(
+        compiled_data, feature_headers, label_header, testable_subjects,
+        subject_no_header="subject", early_stop_patience=100, verbose=0):
+    """Runs "Subject Model" experiment.
+
+    The training process is as follows: First, a generic model is 
+    obtained by training with data from all subjects, removing examples
+    were the game is "Mario". Second, the generic model is specialized
+    using subject-specific data. Lastly, the validation is made with 
+    "Mario" data from particular subjects (each model is validated 
+    individually).
+
+    Args:
+        compiled_data (pandas.DataFrame): Raw dataset.
+        feature_headers (list of str): Features to be used.
+        label_header (str): Label header.
+        testable_subjects (list of int): Ids of subjects that has Mario data.
+        subject_no_header (str, optional): Subject column name in dataset.
+            Defaults to "subject".
+        early_stop_patience (int, optional): Parameter for EarlyStopping.
+            Defaults to 100.
+        verbose (int, optional): Verbosity level passed to keras.
+            Defaults to 2.
+    """
+
+    dataset = normalize_and_encode(
+            compiled_data, feature_headers, label_header)
+
+    # Split dataset into calibration and validation 
+    # data (aka training and testing data)
+    train_X, train_y, test_X, test_y = calibration_validation_split(dataset)
+
+    early_stop = keras.callbacks.EarlyStopping(patience=early_stop_patience)
+
+    # Creates the generic, unspecialized, model
+    generic_model = create_model(
+            input_size=len(feature_headers), 
+            output_size=len(dataset[label_header].unique()))
+
+    generic_model.fit(
+            train_X, train_y, epochs=1000, batch_size=500, 
+            validation_data=(test_X, test_y), verbose=verbose)
+    generic_model.save("best_model")
+
+    print(generic_model.summary())
+
+    # NOTE: Training the generic model every time in the loop
+    # has given an accuracy of 61.65% while using a single training for
+    # the generic model granted 61.53%. We should check if this is due
+    # to keras lack of weight copying (a bug in our setup then) or if
+    # is really a improvement. Also, training only with subject data
+    # (same as in Bevilacqua's work) has reported an accuracy of 61.95%.
+
+    # Specialize model for each subject
+    scores = []
+    for subject_id in testable_subjects:
+        console.warning("Subject: " + str(subject_id))
+
+        subject_model = create_model(
+                input_size=len(feature_headers), 
+                output_size=len(dataset[label_header].unique()))
+
+        # Get subject specific data
+        train_sub_X, train_sub_y, test_sub_X, test_sub_y = \
+                calibration_validation_split(
+                        dataset[dataset[subject_no_header] == subject_id])
+
+        subject_model.fit(
+                train_sub_X, train_sub_y, epochs=1000, 
+                batch_size=50, validation_data=(test_sub_X, test_sub_y),
+                callbacks=[early_stop], verbose=verbose)
+
+        score = subject_model.evaluate(test_sub_X, test_sub_y, verbose=0)
+        scores.append(score)
+
+        print("\tAccuracy: {:.3f}%".format(score[1] * 100))
+
+    scores = np.array(scores)
+    console.error("ACC @ Mean: {:.3f}%".format(
+            np.mean(scores, axis=0)[1] * 100))
+
+
+def run_feature_group_experiment(
+        compiled_data, label_header, testable_subjects,
+        subject_no_header="subject", early_stop_patience=100, verbose=2):
+    """Runs "Feature Group" model experiment.
+
+    The training occurs similarly as in "Subject Model" experiment.
+    The only difference is that in "Feature Group", the features used
+    are different: every measurement type (sum, mean or std) is 
+    combined and used along with `base_facial_features`. The dataset taken
+    from these features are used in "Subject Model" training.
+
+    Args:
+        compiled_data (pandas.DataFrame): Raw dataset.
+        label_header (str): Label header.
+        testable_subjects (list of int): Ids of subjects that has Mario data.
+        subject_no_header (str, optional): Subject column name in dataset.
+            Defaults to "subject".
+        early_stop_patience (int, optional): Parameter for EarlyStopping.
+            Defaults to 100.
+        verbose (int, optional): Verbosity level passed to keras.
+            Defaults to 2.
+    """
+
+    measurement_groups = [
+        ["sum_","mean_","std_"],
+        ["sum_", "mean_"],
+        ["sum_","std_"],
+        ["mean_","std_"],
+        ["sum_"],
+        ["mean_"],
+        ["std_"],
+    ]
+
+    for measurement_group in measurement_groups:
+        _feature_headers = [measurement + feature 
+                            for measurement in measurement_group
+                            for feature in base_facial_features]
+
+        console.info(
+                "Using measurements: [" + ", ".join(measurement_group) + "]")
+
+        run_subject_model_experiment(
+                compiled_data, _feature_headers, label_header, 
+                testable_subjects, subject_no_header, 
+                early_stop_patience, verbose)
+
+
 if __name__ == "__main__":
     dataset_path = "data/dataset/dagibs"
 
@@ -122,73 +259,54 @@ if __name__ == "__main__":
                     initial_cutoff=45,
                     questionnaire_method="self"))
 
+    # Remove validation subjects from dataset
+    compiled_data = compiled_data[~compiled_data[subject_no_header].isin(
+            validation_subjects)]
+
+    compiled_data = compiled_data[compiled_data[label_header] != "neutral"]
+    
     print(compiled_data.shape)
 
-    # Normalize and encode labels
-    compiled_data = compiled_data[compiled_data[label_header] != "neutral"]
+    # Get subjects that has Mario entries
+    testable_subjects = [
+            subject_id 
+            for subject_id in compiled_data[subject_no_header].unique()
+            if any(compiled_data[
+                    compiled_data[subject_no_header] == subject_id][game_type_header]
+                    .str.contains("Mario"))]
 
-    dataset = normalize_and_encode(compiled_data, feature_headers, label_header)
-
-    # Remove validation subjects from dataset
-    dataset = dataset[~dataset[subject_no_header].isin(validation_subjects)]
-
-    # Split dataset into calibration and validation 
-    # data (aka training and testing data)
-    train_X, train_y, test_X, test_y = calibration_validation_split(dataset)
+    testable_subjects = sorted(testable_subjects)
 
     # NOTE: I noticed swedish guys have pre-trained on all subjects 
     # including those without Mario game entry. Later they've specialized
     # the model for each subject that has Mario entry. In other words we
     # have: len(train_data) + len(test_data) < len(dataset).
 
-    # Creates the generic, unspecialized, model
-    tunable_model = TunableModel(
-            input_size=len(train_X[0]), 
-            num_classes=len(dataset[label_header].unique()))
+
+    #######################################################
+    # Model experiment 1
+    #######################################################
+    # print("@"*70)
+    # print("Model Experiment 1")
+    # print("@"*70)
+
+    # run_subject_model_experiment(
+    #         compiled_data, feature_headers, label_header, 
+    #         testable_subjects)
+
+    #######################################################
+    # Model experiment 2
+    # Feature group
+    #######################################################
+    # print("@"*70)
+    # print("Model Experiment 2")
+    # print("@"*70)
+
+    # run_feature_group_experiment(
+    #         compiled_data, label_header, testable_subjects)
+
     
-    tuner = RandomSearch(
-            tunable_model, objective="val_accuracy", 
-            max_trials=20)
-    tuner.search(
-            train_X, train_y, epochs=100, 
-            batch_size=100, validation_data=(test_X, test_y),
-            callbacks=[keras.callbacks.EarlyStopping(patience=20)])
 
-    generic_model = tuner.get_best_models(num_models=1)[0]
-    generic_model.save("best_model")
+        
 
-    print(generic_model.summary())
-
-    # Get subjects that has Mario entries
-    testable_subjects = [
-            subject_id 
-            for subject_id in dataset[subject_no_header].unique()
-            if any(dataset[
-                    dataset[subject_no_header] == subject_id][game_type_header]
-                    .str.contains("Mario"))]
-
-    # Specialize model for each subject
-    scores = []
-    for subject_id in testable_subjects:
-        subject_model = keras.models.load_model("best_model")
-
-        # Get subject specific data
-        train_X, train_y, test_X, test_y = calibration_validation_split(
-                dataset[dataset[subject_no_header] == subject_id])
-
-        subject_model.fit(
-                train_X, train_y, epochs=1000, 
-                batch_size=500, validation_data=(test_X, test_y),
-                callbacks=[keras.callbacks.EarlyStopping(
-                        patience=early_stop_patience)], verbose=False)
-
-        score = subject_model.evaluate(test_X, test_y, verbose=False)
-        scores.append(score)
-
-        print(f"Accuracy: { round(score[1]*100, 2) }%")
-
-    scores = np.array(scores)
-    print(scores.shape)
-    print("@"*50)
-    print("ACC @ Mean:", np.mean(scores, axis=0))
-    print("@"*50)
+    
