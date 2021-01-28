@@ -23,8 +23,7 @@ class TunableModel(HyperModel):
             model.add(
                     keras.layers.Dense(units=hp.Int(
                             "units_" + str(i), min_value=4,
-                            max_value=32, step=4), 
-                    activation="relu"))
+                            max_value=32, step=4), activation="relu"))
 
         # Output Layer
         model.add(keras.layers.Dense(self.num_classes, activation="softmax"))
@@ -34,5 +33,3 @@ class TunableModel(HyperModel):
                 metrics=["accuracy"])
 
         return model
-
-        

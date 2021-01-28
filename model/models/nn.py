@@ -19,7 +19,7 @@ def create_model(input_size, output_size):
     model.add(keras.layers.Dense(output_size, activation="softmax"))
 
     model.compile(
-            optimizer="adam", loss="sparse_categorical_crossentropy", 
+            optimizer="adam", loss="sparse_categorical_crossentropy",
             metrics=["accuracy"])
 
     return model

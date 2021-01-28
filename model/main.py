@@ -31,7 +31,7 @@ from utils.dataset import (
 set_random_state(seed=0)
 
 # Don't change these values
-# Facial features stored in the data, combine facial measurement type and 
+# Facial features stored in the data, combine facial measurement type and
 # base facial feature to get a string index
 facial_measurement_types = ["mean_", "std_", "sum_"]
 
@@ -97,13 +97,13 @@ def calibration_validation_split(
     Args:
         dataset (pandas.DataFrame): Input dataset
         game_type_header (str, optional): [description]. Defaults to "game".
-        validation_game_substr (str, optional): [description]. 
+        validation_game_substr (str, optional): [description].
             Defaults to "Mario".
 
     Returns:
         (pandas.DataFrame, pandas.DataFrame): [description]
     """
-    
+
     calibration_data = dataset[~dataset[game_type_header].str.contains(
             validation_game_substr)]
 
@@ -112,7 +112,7 @@ def calibration_validation_split(
 
     train_X, train_y = split_features_label(
             calibration_data, feature_headers, label_header)
-    
+
     test_X, test_y = split_features_label(
             validation_data, feature_headers, label_header)
 
@@ -124,11 +124,11 @@ def run_subject_model_experiment(
         subject_no_header="subject", early_stop_patience=100, verbose=0):
     """Runs "Subject Model" experiment.
 
-    The training process is as follows: First, a generic model is 
+    The training process is as follows: First, a generic model is
     obtained by training with data from all subjects, removing examples
     were the game is "Mario". Second, the generic model is specialized
-    using subject-specific data. Lastly, the validation is made with 
-    "Mario" data from particular subjects (each model is validated 
+    using subject-specific data. Lastly, the validation is made with
+    "Mario" data from particular subjects (each model is validated
     individually).
 
     Args:
@@ -147,7 +147,7 @@ def run_subject_model_experiment(
     dataset = normalize_and_encode(
             compiled_data, feature_headers, label_header)
 
-    # Split dataset into calibration and validation 
+    # Split dataset into calibration and validation
     # data (aka training and testing data)
     train_X, train_y, test_X, test_y = calibration_validation_split(dataset)
 
@@ -155,11 +155,11 @@ def run_subject_model_experiment(
 
     # Creates the generic, unspecialized, model
     generic_model = create_model(
-            input_size=len(feature_headers), 
+            input_size=len(feature_headers),
             output_size=len(dataset[label_header].unique()))
 
     generic_model.fit(
-            train_X, train_y, epochs=1000, batch_size=500, 
+            train_X, train_y, epochs=1000, batch_size=500,
             validation_data=(test_X, test_y), verbose=verbose)
     generic_model.save("best_model")
 
@@ -178,16 +178,16 @@ def run_subject_model_experiment(
         console.warning("Subject: " + str(subject_id))
 
         subject_model = create_model(
-                input_size=len(feature_headers), 
+                input_size=len(feature_headers),
                 output_size=len(dataset[label_header].unique()))
 
         # Get subject specific data
         train_sub_X, train_sub_y, test_sub_X, test_sub_y = \
-                calibration_validation_split(
-                        dataset[dataset[subject_no_header] == subject_id])
+            calibration_validation_split(
+                    dataset[dataset[subject_no_header] == subject_id])
 
         subject_model.fit(
-                train_sub_X, train_sub_y, epochs=1000, 
+                train_sub_X, train_sub_y, epochs=1000,
                 batch_size=50, validation_data=(test_sub_X, test_sub_y),
                 callbacks=[early_stop], verbose=verbose)
 
@@ -208,7 +208,7 @@ def run_feature_group_experiment(
 
     The training occurs similarly as in "Subject Model" experiment.
     The only difference is that in "Feature Group", the features used
-    are different: every measurement type (sum, mean or std) is 
+    are different: every measurement type (sum, mean or std) is
     combined and used along with `base_facial_features`. The dataset taken
     from these features are used in "Subject Model" training.
 
@@ -225,17 +225,17 @@ def run_feature_group_experiment(
     """
 
     measurement_groups = [
-        ["sum_","mean_","std_"],
+        ["sum_", "mean_", "std_"],
         ["sum_", "mean_"],
-        ["sum_","std_"],
-        ["mean_","std_"],
+        ["sum_", "std_"],
+        ["mean_", "std_"],
         ["sum_"],
         ["mean_"],
         ["std_"],
     ]
 
     for measurement_group in measurement_groups:
-        _feature_headers = [measurement + feature 
+        _feature_headers = [measurement + feature
                             for measurement in measurement_group
                             for feature in base_facial_features]
 
@@ -243,8 +243,8 @@ def run_feature_group_experiment(
                 "Using measurements: [" + ", ".join(measurement_group) + "]")
 
         run_subject_model_experiment(
-                compiled_data, _feature_headers, label_header, 
-                testable_subjects, subject_no_header, 
+                compiled_data, _feature_headers, label_header,
+                testable_subjects, subject_no_header,
                 early_stop_patience, verbose)
 
 
@@ -253,9 +253,9 @@ if __name__ == "__main__":
 
     # Load dataset
     compiled_data = load_data_from_dir(
-            dataset_path, 
+            dataset_path,
             DataProperties(
-                    window_size=60, 
+                    window_size=60,
                     initial_cutoff=45,
                     questionnaire_method="self"))
 
@@ -264,24 +264,23 @@ if __name__ == "__main__":
             validation_subjects)]
 
     compiled_data = compiled_data[compiled_data[label_header] != "neutral"]
-    
+
     print(compiled_data.shape)
 
     # Get subjects that has Mario entries
     testable_subjects = [
-            subject_id 
+            subject_id
             for subject_id in compiled_data[subject_no_header].unique()
             if any(compiled_data[
-                    compiled_data[subject_no_header] == subject_id][game_type_header]
-                    .str.contains("Mario"))]
+                compiled_data[subject_no_header] == subject_id][game_type_header]
+                .str.contains("Mario"))]
 
     testable_subjects = sorted(testable_subjects)
 
-    # NOTE: I noticed swedish guys have pre-trained on all subjects 
+    # NOTE: I noticed swedish guys have pre-trained on all subjects
     # including those without Mario game entry. Later they've specialized
     # the model for each subject that has Mario entry. In other words we
     # have: len(train_data) + len(test_data) < len(dataset).
-
 
     #######################################################
     # Model experiment 1
@@ -291,7 +290,7 @@ if __name__ == "__main__":
     # print("@"*70)
 
     # run_subject_model_experiment(
-    #         compiled_data, feature_headers, label_header, 
+    #         compiled_data, feature_headers, label_header,
     #         testable_subjects)
 
     #######################################################
@@ -304,9 +303,3 @@ if __name__ == "__main__":
 
     # run_feature_group_experiment(
     #         compiled_data, label_header, testable_subjects)
-
-    
-
-        
-
-    
