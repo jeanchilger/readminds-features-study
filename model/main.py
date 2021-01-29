@@ -1,21 +1,7 @@
-"""General Pipeline from notebook.
-- 1. `compile_data_recursive` (L 119);
-- 2. `create_preprocessed` (L 427);
-- 3. `tune_model` (L 428);
-- 4. `create_preprocessed` (L 434);
-- 5. `get_testable_subjects` (L 436);
-- 6. `subject_cross_validation` (L 440);
-- 7. `save_results` (L 473);
-- 8. Train and evaluate for different measurements (L 479-492);
-- 9. Filter features and measurements (L 517-542);
-- 10. Train eliminating 1 feature at a time (L 545-553);
-"""
-
+import argparse
 import numpy as np
 
-from evaluation.metrics import recall as recall_m, precision, f1_score
 from kerastuner.tuners import RandomSearch
-# from models.tunning import TunableModel
 from models.nn import create_model
 from preprocessing import normalize_and_encode
 from tensorflow import keras
@@ -26,6 +12,7 @@ from utils.dataset import (
     load_data_from_dir,
     split_features_label,
 )
+from utils.file import save_results_to_csv
 
 # Set python hash and frameworks' random seed to a comon value
 set_random_state(seed=0)
@@ -55,9 +42,8 @@ base_facial_features = [
 # Other indices
 HR_ground_header = "mean_HR_ground"
 rppg_header = "HR_poh2011"
-subject_no_header = "subject"
+subject_header = "subject"
 game_type_header = "game"
-
 
 # Define label and feature names to use
 label_header = "emotional_state"
@@ -76,9 +62,6 @@ feature_headers = [
 # DON'T CHANGE THESE VALUES, IMPORTANT
 validation_subjects = [408, 402, 418, 934, 960, 908]
 
-# Training hyperparameters
-max_epochs = 50
-
 # Early stop patience is a measure of how many epochs
 # of training the network goes through without a positive
 # performance impact before stopping training.
@@ -86,8 +69,8 @@ early_stop_patience = 100
 
 
 def calibration_validation_split(
-        dataset, game_type_header="game",
-        validation_game_substr="Mario"):
+        dataset, feature_headers, label_header,
+        game_type_header="game", validation_game_substr="Mario"):
     """Splits a dataset into two.
 
     Splits a dataset in calibration and validation data. The split
@@ -121,7 +104,8 @@ def calibration_validation_split(
 
 def run_subject_model_experiment(
         compiled_data, feature_headers, label_header, testable_subjects,
-        subject_no_header="subject", early_stop_patience=100, verbose=0):
+        results_path="results/model/subject-training.csv",
+        subject_header="subject", early_stop_patience=100, verbose=0):
     """Runs "Subject Model" experiment.
 
     The training process is as follows: First, a generic model is
@@ -136,12 +120,12 @@ def run_subject_model_experiment(
         feature_headers (list of str): Features to be used.
         label_header (str): Label header.
         testable_subjects (list of int): Ids of subjects that has Mario data.
-        subject_no_header (str, optional): Subject column name in dataset.
+        subject_header (str, optional): Subject column name in dataset.
             Defaults to "subject".
         early_stop_patience (int, optional): Parameter for EarlyStopping.
             Defaults to 100.
         verbose (int, optional): Verbosity level passed to keras.
-            Defaults to 2.
+            Defaults to 0.
     """
 
     dataset = normalize_and_encode(
@@ -149,7 +133,8 @@ def run_subject_model_experiment(
 
     # Split dataset into calibration and validation
     # data (aka training and testing data)
-    train_X, train_y, test_X, test_y = calibration_validation_split(dataset)
+    train_X, train_y, test_X, test_y = calibration_validation_split(
+            dataset, feature_headers, label_header)
 
     early_stop = keras.callbacks.EarlyStopping(patience=early_stop_patience)
 
@@ -157,34 +142,33 @@ def run_subject_model_experiment(
     generic_model = create_model(
             input_size=len(feature_headers),
             output_size=len(dataset[label_header].unique()))
-
     generic_model.fit(
             train_X, train_y, epochs=1000, batch_size=500,
             validation_data=(test_X, test_y), verbose=verbose)
-    generic_model.save("best_model")
 
-    print(generic_model.summary())
+    generic_model.save("readminds_trained_models/generic_model")
 
     # NOTE: Training the generic model every time in the loop
-    # has given an accuracy of 61.65% while using a single training for
-    # the generic model granted 61.53%. We should check if this is due
+    # has given an accuracy of 62.02% while using a single training for
+    # the generic model granted 59.76%. We should check if this is due
     # to keras lack of weight copying (a bug in our setup then) or if
     # is really a improvement. Also, training only with subject data
-    # (same as in Bevilacqua's work) has reported an accuracy of 61.95%.
+    # (same as in Bevilacqua's work) has reported an accuracy
+    # of 61.95 (61.53)%.
 
     # Specialize model for each subject
     scores = []
     for subject_id in testable_subjects:
         console.warning("Subject: " + str(subject_id))
 
-        subject_model = create_model(
-                input_size=len(feature_headers),
-                output_size=len(dataset[label_header].unique()))
+        subject_model = keras.models.load_model(
+                "readminds_trained_models/generic_model")
 
         # Get subject specific data
         train_sub_X, train_sub_y, test_sub_X, test_sub_y = \
             calibration_validation_split(
-                    dataset[dataset[subject_no_header] == subject_id])
+                    dataset[dataset[subject_header] == subject_id],
+                    feature_headers, label_header)
 
         subject_model.fit(
                 train_sub_X, train_sub_y, epochs=1000,
@@ -192,18 +176,23 @@ def run_subject_model_experiment(
                 callbacks=[early_stop], verbose=verbose)
 
         score = subject_model.evaluate(test_sub_X, test_sub_y, verbose=0)
-        scores.append(score)
+        scores.append([subject_id, *score])
 
         print("\tAccuracy: {:.3f}%".format(score[1] * 100))
 
     scores = np.array(scores)
+    save_results_to_csv(
+            results_path, scores,
+            ["subject_id", "loss", "accuracy"])
+
     console.error("ACC @ Mean: {:.3f}%".format(
             np.mean(scores, axis=0)[1] * 100))
 
 
 def run_feature_group_experiment(
-        compiled_data, label_header, testable_subjects,
-        subject_no_header="subject", early_stop_patience=100, verbose=2):
+        compiled_data, base_facial_features, label_header,
+        testable_subjects, subject_header="subject",
+        early_stop_patience=100, verbose=0):
     """Runs "Feature Group" model experiment.
 
     The training occurs similarly as in "Subject Model" experiment.
@@ -213,10 +202,12 @@ def run_feature_group_experiment(
     from these features are used in "Subject Model" training.
 
     Args:
+        base_facial_features (list of str): Base feature names to be used.
+            They will combined with measurements (std, sum, mean).
         compiled_data (pandas.DataFrame): Raw dataset.
         label_header (str): Label header.
         testable_subjects (list of int): Ids of subjects that has Mario data.
-        subject_no_header (str, optional): Subject column name in dataset.
+        subject_header (str, optional): Subject column name in dataset.
             Defaults to "subject".
         early_stop_patience (int, optional): Parameter for EarlyStopping.
             Defaults to 100.
@@ -243,12 +234,26 @@ def run_feature_group_experiment(
                 "Using measurements: [" + ", ".join(measurement_group) + "]")
 
         run_subject_model_experiment(
-                compiled_data, _feature_headers, label_header,
-                testable_subjects, subject_no_header,
-                early_stop_patience, verbose)
+                compiled_data=compiled_data,
+                feature_headers=_feature_headers,
+                label_header=label_header,
+                testable_subjects=testable_subjects,
+                results_path="results/model/feature-group-training.csv",
+                subject_header=subject_header,
+                early_stop_patience=early_stop_patience,
+                verbose=verbose)
 
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument(
+        "-t", "--train-strategy", help="Model training type.",
+        dest="train_strategy", default="subject",
+        choices=["subject", "feature-group"])
 
 if __name__ == "__main__":
+    args = parser.parse_args()
+
     dataset_path = "data/dataset/dagibs"
 
     # Load dataset
@@ -260,7 +265,7 @@ if __name__ == "__main__":
                     questionnaire_method="self"))
 
     # Remove validation subjects from dataset
-    compiled_data = compiled_data[~compiled_data[subject_no_header].isin(
+    compiled_data = compiled_data[~compiled_data[subject_header].isin(
             validation_subjects)]
 
     compiled_data = compiled_data[compiled_data[label_header] != "neutral"]
@@ -270,9 +275,9 @@ if __name__ == "__main__":
     # Get subjects that has Mario entries
     testable_subjects = [
             subject_id
-            for subject_id in compiled_data[subject_no_header].unique()
+            for subject_id in compiled_data[subject_header].unique()
             if any(compiled_data[
-                compiled_data[subject_no_header] == subject_id][game_type_header]
+                compiled_data[subject_header] == subject_id][game_type_header]
                 .str.contains("Mario"))]
 
     testable_subjects = sorted(testable_subjects)
@@ -282,24 +287,18 @@ if __name__ == "__main__":
     # the model for each subject that has Mario entry. In other words we
     # have: len(train_data) + len(test_data) < len(dataset).
 
-    #######################################################
-    # Model experiment 1
-    #######################################################
-    # print("@"*70)
-    # print("Model Experiment 1")
-    # print("@"*70)
+    train_strategy = args.train_strategy
 
-    # run_subject_model_experiment(
-    #         compiled_data, feature_headers, label_header,
-    #         testable_subjects)
+    if train_strategy == "subject":
+        console.error("Running 'Subject' training strategy.", bold=True)
 
-    #######################################################
-    # Model experiment 2
-    # Feature group
-    #######################################################
-    # print("@"*70)
-    # print("Model Experiment 2")
-    # print("@"*70)
+        run_subject_model_experiment(
+                compiled_data, feature_headers, label_header,
+                testable_subjects)
 
-    # run_feature_group_experiment(
-    #         compiled_data, label_header, testable_subjects)
+    elif train_strategy == "feature-group":
+        console.error("Running 'Feature Group' training strategy.", bold=True)
+
+        run_feature_group_experiment(
+                compiled_data, base_facial_features, label_header,
+                testable_subjects)
