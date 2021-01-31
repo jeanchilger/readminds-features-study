@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+# Runs and controls experiments
+
+# Experiments' Variables
+# num_executions
+
+
+show_usage() {
+    echo "Usage: ./experiment <experiment>
+    -s <samples> | --samples=<samples>"
+}
+
+show_help() {
+    show_usage
+
+    echo "<experiment>"
+    echo "      Experiment name to be used."
+    echo ""
+
+    echo "-s <samples> | --experiment-samples=<samples>"
+    echo "      Specifies the number of samples for <experiments>"
+    echo "      that should be executed. At the end of all"
+    echo "      executions, mean and std of them will also be taken."
+}
+
+# Parameter extraction
+POSITIONAL=()
