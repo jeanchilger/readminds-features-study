@@ -7,22 +7,68 @@
 
 
 show_usage() {
-    echo "Usage: ./experiment <experiment>
-    -s <samples> | --samples=<samples>"
+    echo "Usage: ./experiment <experiment>"
+    echo "       -s <samples> | --samples=<samples> [-h | --help]"
 }
 
 show_help() {
     show_usage
+    echo ""
 
     echo "<experiment>"
     echo "      Experiment name to be used."
     echo ""
 
-    echo "-s <samples> | --experiment-samples=<samples>"
+    echo "-s <samples>, --experiment-samples=<samples>"
     echo "      Specifies the number of samples for <experiments>"
     echo "      that should be executed. At the end of all"
     echo "      executions, mean and std of them will also be taken."
+    echo ""
+
+    echo "-h, --help"
+    echo "      Shows this message."
 }
 
-# Parameter extraction
 POSITIONAL=()
+
+# Short-option parsing
+while [[ $# -gt 0 ]]; do
+    option=$1; shift
+
+    case $option in
+        -s )
+            samples=$1; shift
+            ;;
+
+        -h )
+            show_help
+            ;;
+
+        * )
+            POSITIONAL+=("$option")
+            ;;
+    esac
+done
+
+set -- "${POSITIONAL[@]}"
+
+# Long-option parsing
+while [[ $# -gt 0 ]]; do
+    option=$1; shift
+
+    case $option in
+        --samples=* )
+            samples=$1; shift
+            ;;
+
+        --help )
+            show_help
+            ;;
+
+        * )
+            echo "Unknown option ${option}."
+            show_usage
+            exit
+            ;;
+    esac
+done
