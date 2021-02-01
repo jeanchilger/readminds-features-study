@@ -15,7 +15,8 @@ source "${EXPERIMENTS_PATH}/utils/console"
 
 show_usage() {
     echo "Usage: ./experiment <experiment>"
-    echo "       -s <samples> | --samples=<samples> [-h | --help]"
+    echo "       [-s <samples> | --samples=<samples>] [-h | --help]"
+    echo "       [-v | --verbose] "
 }
 
 show_help() {
