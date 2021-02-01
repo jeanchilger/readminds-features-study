@@ -5,6 +5,13 @@
 # Experiments' Variables
 # num_executions
 
+readonly ABS_PATH=$(pwd)
+readonly EXPERIMENTS_PATH="${ABS_PATH}/experiments"
+readonly MODEL_PATH="${ABS_PATH}/model"
+readonly RESULTS_PATH="${ABS_PATH}/results"
+
+source "${EXPERIMENTS_PATH}/utils/console"
+
 
 show_usage() {
     echo "Usage: ./experiment <experiment>"
@@ -15,60 +22,105 @@ show_help() {
     show_usage
     echo ""
 
-    echo "<experiment>"
-    echo "      Experiment name to be used."
+    e_white "<experiment>"
+    echo "      Experiment name to be used. Possible values are:"
+    echo "      'original': Same training setup as in thesis."
+    echo "      'subject': Model trained on group, later specialized"
+    echo "                       on each subject."
+    echo "      'feature-group': Same setup as in 'subject-model', but with"
+    echo "                       variations on features used."
     echo ""
 
-    echo "-s <samples>, --experiment-samples=<samples>"
-    echo "      Specifies the number of samples for <experiments>"
+    e_white "-s <samples>, --samples=<samples>"
+    echo "      Specifies the number of samples for <experiment>"
     echo "      that should be executed. At the end of all"
     echo "      executions, mean and std of them will also be taken."
+    echo "      Defaults to 1."
     echo ""
 
-    echo "-h, --help"
+    e_white "-v, --verbose"
+    echo "      Activates logging messages from training phase."
+    echo ""
+
+    e_white "-h, --help"
     echo "      Shows this message."
 }
 
-POSITIONAL=()
+extra_params=()
+samples=1
+verbose=false
 
-# Short-option parsing
+# Short-option and "parameterless" parsing
 while [[ $# -gt 0 ]]; do
     option=$1; shift
 
     case $option in
-        -s )
+        -s)
             samples=$1; shift
             ;;
 
-        -h )
-            show_help
+        -v | --verbose)
+            verbose=true
             ;;
 
-        * )
-            POSITIONAL+=("$option")
+        -h | --help)
+            show_help
+            exit
+            ;;
+
+        *)
+            extra_params+=("$option")
             ;;
     esac
 done
 
-set -- "${POSITIONAL[@]}"
+set -- "${extra_params[@]}"
+
+# TODO (@jeanchilger): The <experiment> should be taken with a safer way.
+experiment=$1; shift
 
 # Long-option parsing
 while [[ $# -gt 0 ]]; do
     option=$1; shift
 
     case $option in
-        --samples=* )
+        --samples=*)
             samples=$1; shift
             ;;
 
-        --help )
-            show_help
-            ;;
-
-        * )
+        *)
             echo "Unknown option ${option}."
             show_usage
             exit
             ;;
     esac
 done
+
+$verbose && e_blue "Running experiment '${experiment}'."
+
+# Clean files and folders, to prevent wrong results
+> "/tmp/readminds-${experiment}-summary"
+rm -rf "${RESULTS_PATH}/${experiment}/*"
+
+# Collects all results
+for i in $(seq -f "%02g" ${samples}); do
+    results_path="${RESULTS_PATH}/${experiment}/${experiment}-${i}.csv"
+
+    if $verbose; then
+        python3 "${MODEL_PATH}/main.py" \
+            --train-strategy="${experiment}" \
+            --results-path="${results_path}"
+    
+    else
+        python3 "${MODEL_PATH}/main.py" \
+            --train-strategy="${experiment}" \
+            --results-path="${results_path}" 1> /dev/null
+    fi
+
+    echo "${i} ${experiment} ${results_path}" \
+        >> "/tmp/readminds-${experiment}-summary"
+done
+
+# Assemble all results, take mean and std
+python3 "${EXPERIMENTS_PATH}/utils/assemble_results.py" \
+    "/tmp/readminds-${experiment}-summary" "${experiment}"
