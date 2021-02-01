@@ -58,4 +58,4 @@ with open(summary_file_path, "w") as summary_file:
         mean = np.mean(values, axis=0)
         std = np.std(values, axis=0)
 
-        csv_writer.writerow([*mean, *std])
+        csv_writer.writerow([subject_id, *mean, *std])
