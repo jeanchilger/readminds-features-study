@@ -1,4 +1,5 @@
 import argparse
+import csv
 import numpy as np
 
 from kerastuner.tuners import RandomSearch
@@ -13,9 +14,6 @@ from utils.dataset import (
     split_features_label,
 )
 from utils.file import save_results_to_csv
-
-# Set python hash and frameworks' random seed to a comon value
-set_random_state(seed=0)
 
 # Don't change these values
 # Facial features stored in the data, combine facial measurement type and
@@ -191,7 +189,7 @@ def run_subject_model_experiment(
 
 def run_feature_group_experiment(
         compiled_data, base_facial_features, label_header,
-        testable_subjects, subject_header="subject",
+        testable_subjects, results_path, subject_header="subject",
         early_stop_patience=100, verbose=0):
     """Runs "Feature Group" model experiment.
 
@@ -251,8 +249,22 @@ parser.add_argument(
         dest="train_strategy", default="subject",
         choices=["subject", "feature-group"])
 
+parser.add_argument(
+        "-r", "--results-path", help="Path to store the results.",
+        dest="results_path", default="results/model")
+
+parser.add_argument(
+        "-s", "--seed",
+        help="Sets a common random seed. Useful for reproducibility.",
+        dest="seed", const=True, default=False, nargs="?")
+
 if __name__ == "__main__":
     args = parser.parse_args()
+
+    seed = args.seed
+
+    if seed:
+        set_random_state(seed=seed)
 
     dataset_path = "data/dataset/dagibs"
 
@@ -288,17 +300,18 @@ if __name__ == "__main__":
     # have: len(train_data) + len(test_data) < len(dataset).
 
     train_strategy = args.train_strategy
+    results_path = args.results_path
 
     if train_strategy == "subject":
         console.error("Running 'Subject' training strategy.", bold=True)
 
         run_subject_model_experiment(
                 compiled_data, feature_headers, label_header,
-                testable_subjects)
+                testable_subjects, results_path)
 
     elif train_strategy == "feature-group":
         console.error("Running 'Feature Group' training strategy.", bold=True)
 
         run_feature_group_experiment(
                 compiled_data, base_facial_features, label_header,
-                testable_subjects)
+                testable_subjects, results_path)
