@@ -15,9 +15,9 @@ class ICAEstimator(BaseEstimator):
         Args:
             video_wrapper (VideoWrapper): pyVHR Video Wrapper.
             method (str, optional): ICA method, e.g fast_ica or jade.
-            Defaults to "jade".
+                `fast_ica` don't work very well. Defaults to "jade".
             verbose (int, optional): Whether to display or not
-            running info (1), graphs (2), etc. Defaults to 1.
+                running info (1), graphs (2), etc. Defaults to 1.
         """
         super().__init__(video_wrapper)
         self._ica = ICA(ICAmethod=method,

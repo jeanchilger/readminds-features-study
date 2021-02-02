@@ -23,26 +23,26 @@ class VideoWrapper:
         Args:
             video_path (str): path to the video about to be processed.
             detector (str): face detector method
-            (dlib, mtcnn, mtcnn_kalmann).
+                (dlib, mtcnn, mtcnn_kalmann).
             extractor (str): library used for video reading
-            (opencv, skvideo).
+                (opencv, skvideo).
             type_roi (str): method used for ROI extraction
-            (rect, skin_adapt, skin_fix).
+                (rect, skin_adapt, skin_fix).
             skin_thresh_adapt (float, optional): Threshold used
-            when `type_roi` is set to skin_adapt. Defaults to None.
+                when `type_roi` is set to skin_adapt. Defaults to None.
             skin_thresh_fix (float, optional): Threshold used
-            when `type_roi` is set to skin_fix. Defaults to None.
+                when `type_roi` is set to skin_fix. Defaults to None.
             rect_regions (list, optional): List of retangular regions
-            to be extracted from the face, e.g ['forehead', 'lcheek',
-            'rcheek', 'nose']. Defaults to None.
+                to be extracted from the face, e.g ['forehead', 'lcheek',
+                'rcheek', 'nose']. Defaults to None.
             rect_coords (list, optional): List of retangular ROIs, e.g
-            [[X0, Y0, W0, H0], [Xn, Yn, Wn, Hn]]. Defaults to None.
+                [[X0, Y0, W0, H0], [Xn, Yn, Wn, Hn]]. Defaults to None.
             end_time (int, optional): Final instant of the Video in seconds.
-            Defaults to None.
+                Defaults to None.
 
         Returns:
             VideoWrapper: video wrapper object, able to be
-            passed to a estimator method.
+                passed to a estimator method.
         """
         self._video = pyVHRVideo(video_path)
         self._detector = detector
@@ -83,7 +83,7 @@ class VideoWrapper:
 
         Args:
             verbose (bool, optional): Shows video metadata.
-            Defaults to False.
+                Defaults to False.
         """
         self.video.getCroppedFaces(
                 detector=self._detector,
@@ -92,8 +92,8 @@ class VideoWrapper:
             self._video.printVideoInfo()
 
     def show_faces(self):
-        """Sets ROI method and the needed parameters
-           and display the resulting video.
+        """Sets ROI method and needed parameters
+           then display resulting video.
         """
         self._video.setMask(typeROI=self.type_roi,
                             skinThresh_adapt=self._skin_thresh_adapt,

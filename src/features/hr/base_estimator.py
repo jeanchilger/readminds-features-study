@@ -24,7 +24,7 @@ class BaseEstimator:
 
     def save(self, file_name):
         output = open(file_name, "w")
-        output.write("Second,HR_Estimation\n")
+        output.write("second,hr\n")
         hr_estimation = self._bpm_estimation[0][0]
         seconds = self._bpm_estimation[1]
 
