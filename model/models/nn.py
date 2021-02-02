@@ -6,10 +6,12 @@ from tensorflow import keras
 
 
 def create_model(input_size, output_size):
-    """[summary]
+    """Creates a simple, "default" nn model.
+
+    The neural network have a single hidden layer with 16 neurons.
 
     Returns:
-        [type]: [description]
+        keras.Sequential: Compiled model.
     """
 
     model = keras.Sequential()
