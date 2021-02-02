@@ -13,8 +13,10 @@ class BaseEstimator:
         self._video_wrapper = video_wrapper
         self._roi_mask = self._video_wrapper.type_roi
         self._skin_adapt = self._video_wrapper.skin_thresh_adapt
-        self._skin_fix = self._video_wrapper._skin_thresh_fix
+        self._skin_fix = self._video_wrapper.skin_thresh_fix
         self._end_time = self._video_wrapper.end_time
+        self._rect_coords = self.rect_coords
+        self._rect_regions = self.rect_regions
 
     @property
     def bpm_estimation(self):

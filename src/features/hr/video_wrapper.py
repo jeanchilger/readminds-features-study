@@ -11,8 +11,8 @@ class VideoWrapper:
     def __init__(
             self, video_path, detector, extractor,
             type_roi, skin_thresh_adapt=None,
-            skin_thresh_fix=None, rect_regions=None,
-            rect_coords=None, end_time="INF"):
+            skin_thresh_fix=None, rect_coords=None,
+            rect_regions=None, end_time="INF"):
         """Creates a VideoWrapper given a video path, face
         detector, video extractor, ROI method and ROI related
         parameters.
@@ -72,8 +72,20 @@ class VideoWrapper:
         return self._skin_thresh_adapt
 
     @property
+    def skin_thresh_fix(self):
+        return self._skin_thresh_fix
+
+    @property
     def end_time(self):
         return self._end_time
+
+    @property
+    def rect_coords(self):
+        return self._rect_coords
+
+    @property
+    def rect_regions(self):
+        return self._rect_regions
 
     def extract_faces(self, verbose=False):
         """Extracts faces from a video.

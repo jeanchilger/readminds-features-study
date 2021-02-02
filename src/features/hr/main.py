@@ -2,6 +2,12 @@ from video_wrapper import VideoWrapper
 from ica_estimator import ICAEstimator
 import argparse
 
+#
+# python src/features/hr/main.py --video_path miaaau.mp4 \
+# --detector mtcnn_kalmann --extractor skvideo --type_roi \
+# skin_adapt --skin_thresh_adapt 0.4
+#
+
 
 def create_parser():
     parser = argparse.ArgumentParser(description="Main script for ica \
@@ -15,19 +21,20 @@ def create_parser():
     parser.add_argument("--detector",
                         type=str,
                         required=True,
-                        help="Face detector method \
-                             (dlib, mtcnn, mtcnn_kalmann).")
+                        help="Face detector method.",
+                        choices=["dlib", "mtcnn", "mtcnn_kalmann"])
 
     parser.add_argument("--extractor",
                         type=str,
                         required=True,
-                        help="Video extractor (opencv, skvideo).")
+                        help="Video extractor.",
+                        choices=["opencv", "skvideo"])
 
     parser.add_argument("--type_roi",
                         type=str,
                         required=True,
-                        help="Method for ROI extraction \
-                             (skin_adapt, skin_fix, rect).")
+                        help="Method for ROI extraction.",
+                        choices=["skin_adapt", "skin_fix", "rect"])
 
     parser.add_argument("--skin_thresh_adapt",
                         type=float,
@@ -48,7 +55,8 @@ def create_parser():
     parser.add_argument("--rect_regions",
                         type=list,
                         help="ROI regions, needed when type_roi=rect \
-                              and no rect_coords is provided.")
+                              and no rect_coords is provided.",
+                        choices=["forehead", "lcheek", "rcheek", "nose"])
 
     parser.add_argument("--end_time",
                         type=float,
@@ -61,8 +69,10 @@ def create_parser():
 
 def test_face_extractor(args):
     face_extractor = VideoWrapper(
-        args.video_path, args.detector,
-        args.extractor, args.type_roi,
+        video_path=args.video_path,
+        detector=args.detector,
+        extractor=args.extractor,
+        type_roi=args.type_roi,
         skin_thresh_adapt=args.skin_thresh_adapt,
         skin_thresh_fix=args.skin_thresh_fix,
         rect_coords=args.rect_coords,
@@ -75,8 +85,10 @@ def test_face_extractor(args):
 
 def test_ica_estimator(args):
     face_extractor = VideoWrapper(
-        args.video_path, args.detector,
-        args.extractor, args.type_roi,
+        video_path=args.video_path,
+        detector=args.detector,
+        extractor=args.extractor,
+        type_roi=args.type_roi,
         skin_thresh_adapt=args.skin_thresh_adapt,
         skin_thresh_fix=args.skin_thresh_fix,
         rect_coords=args.rect_coords,
@@ -94,5 +106,5 @@ if __name__ == "__main__":
 
     # You may what to run one test at
     # the time, just in case a problem occur
-    test_face_extractor(args)
-    # test_ica_estimator(args)
+    # test_face_extractor(args)
+    test_ica_estimator(args)

@@ -27,5 +27,7 @@ class ICAEstimator(BaseEstimator):
             endTime=self._end_time,
             ROImask=self._roi_mask,
             skinAdapt=self._skin_adapt,
-            skinFix=self._skin_fix)
+            skinFix=self._skin_fix,
+            rectCoords=self._rect_coords,
+            rectRegions=self._rect_regions)
         self._bpm_estimation = estimation
