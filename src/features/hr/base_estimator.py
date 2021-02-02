@@ -1,9 +1,7 @@
 class BaseEstimator:
-
-    """Entity that holds heart rate estimators'
-    common properties and methods.
+    """Entity that holds heart rate estimators' common properties
+    and methods.
     """
-
     def __init__(self, video_wrapper):
         """Creates a BaseEstimator given a
         VideoWrapper instance.

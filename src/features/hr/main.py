@@ -51,34 +51,37 @@ def create_parser():
                               and no rect_coords is provided.")
 
     parser.add_argument("--end_time",
-                        type=int,
+                        type=float,
                         help="End time in seconds, \
                               needed when pyVHR is not able to compute \
-                              video duration like amount_of_frame / fps.")
+                              video duration like amount_of_frames / fps.")
 
     return parser
 
 
 def test_face_extractor(args):
-    face_extractor = VideoWrapper(args.video_path, args.detector,
-                                  args.extractor, args.type_roi,
-                                  skin_thresh_adapt=args.skin_thresh_adapt,
-                                  skin_thresh_fix=args.skin_thresh_fix,
-                                  rect_coords=args.rect_coords,
-                                  rect_regions=args.rect_regions,
-                                  end_time=args.end_time)
+    face_extractor = VideoWrapper(
+        args.video_path, args.detector,
+        args.extractor, args.type_roi,
+        skin_thresh_adapt=args.skin_thresh_adapt,
+        skin_thresh_fix=args.skin_thresh_fix,
+        rect_coords=args.rect_coords,
+        rect_regions=args.rect_regions,
+        end_time="INF" if args.end_time is None else args.end_time)
+
     face_extractor.extract_faces()
     face_extractor.show_faces()
 
 
 def test_ica_estimator(args):
-    face_extractor = VideoWrapper(args.video_path, args.detector,
-                                  args.extractor, args.type_roi,
-                                  skin_thresh_adapt=args.skin_thresh_adapt,
-                                  skin_thresh_fix=args.skin_thresh_fix,
-                                  rect_coords=args.rect_coords,
-                                  rect_regions=args.rect_regions,
-                                  end_time=args.end_time)
+    face_extractor = VideoWrapper(
+        args.video_path, args.detector,
+        args.extractor, args.type_roi,
+        skin_thresh_adapt=args.skin_thresh_adapt,
+        skin_thresh_fix=args.skin_thresh_fix,
+        rect_coords=args.rect_coords,
+        rect_regions=args.rect_regions,
+        end_time="INF" if args.end_time is None else args.end_time)
 
     ica = ICAEstimator(face_extractor)
     ica.run_offline()
@@ -88,5 +91,8 @@ def test_ica_estimator(args):
 if __name__ == "__main__":
     parser = create_parser()
     args = parser.parse_args()
-    # test_face_extractor(args)
+
+    # You may what to run one test at
+    # the time, just in case a problem occur
+    test_face_extractor(args)
     # test_ica_estimator(args)
