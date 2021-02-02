@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+# Provide utility functions for echoing with colors.
+
+readonly RED="\e[31;1m"
+readonly GREEN="\e[32;1m"
+readonly BLUE="\e[34;1m"
+readonly WHITE="\e[37;1m"
+readonly MAGENTA="\e[35;1m"
+readonly YELLOW="\e[33;1m"
+
+readonly END="\e[0m"
+
+e_red() {
+    echo -e "${RED}${1}${END}"
+}
+
+e_green() {
+    echo -e "${GREEN}${1}${END}"
+}
+
+e_blue() {
+    echo -e "${BLUE}${1}${END}"
+}
+
+e_white() {
+    echo -e "${WHITE}${1}${END}"
+}
