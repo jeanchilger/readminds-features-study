@@ -10,7 +10,7 @@ def load_data_from_dir(directory, data_properties=None, pattern="**/*.csv"):
         directory (string): Directory to read the data from.
         data_properties (DataProperties, optional): Filter files by
             metadata info. Defaults to None.
-        pattern (str, optional): Pattern to search for (usging glob).
+        pattern (str, optional): Pattern to search for (using glob).
             Defaults to "**/*.csv".
 
     Returns:
