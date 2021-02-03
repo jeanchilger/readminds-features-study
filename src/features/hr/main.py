@@ -3,9 +3,9 @@ from ica_estimator import ICAEstimator
 import argparse
 
 #
-# python src/features/hr/main.py --video_path miaaau.mp4 \
-# --detector mtcnn_kalmann --extractor skvideo --type_roi \
-# skin_adapt --skin_thresh_adapt 0.4
+# python src/features/hr/main.py --video_path fernando-320x240-1min.mp4 \
+# --detector mtcnn_kalman --extractor skvideo --type_roi \
+# skin_adapt --skin_thresh_adapt 0.4 --end_time 59
 #
 
 
@@ -22,7 +22,7 @@ def create_parser():
                         type=str,
                         required=True,
                         help="Face detector method.",
-                        choices=["dlib", "mtcnn", "mtcnn_kalmann"])
+                        choices=["dlib", "mtcnn", "mtcnn_kalman"])
 
     parser.add_argument("--extractor",
                         type=str,
@@ -64,7 +64,7 @@ def create_parser():
                               needed when pyVHR is not able to compute \
                               video duration like amount_of_frames / fps.")
 
-    return parser
+    return parser.parse_args()
 
 
 def test_face_extractor(args):
@@ -79,7 +79,7 @@ def test_face_extractor(args):
         rect_regions=args.rect_regions,
         end_time="INF" if args.end_time is None else args.end_time)
 
-    face_extractor.extract_faces()
+    face_extractor.extract_faces(verbose=True)
     face_extractor.show_faces()
 
 
@@ -95,14 +95,15 @@ def test_ica_estimator(args):
         rect_regions=args.rect_regions,
         end_time="INF" if args.end_time is None else args.end_time)
 
+    face_extractor.extract_faces(verbose=True)
+    face_extractor.show_faces()
     ica = ICAEstimator(face_extractor)
     ica.run_offline()
-    ica.save("miaau.csv")
+    ica.save("ica.csv")
 
 
 if __name__ == "__main__":
-    parser = create_parser()
-    args = parser.parse_args()
+    args = get_args()
 
     # You may what to run one test at
     # the time, just in case a problem occur

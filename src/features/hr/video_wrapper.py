@@ -1,4 +1,4 @@
-from pyVHR.signals.video import Video as pyVHRVideo
+from pyVHR.signals.video import Video
 
 
 class VideoWrapper:
@@ -20,7 +20,7 @@ class VideoWrapper:
         Args:
             video_path (str): path to the video about to be processed.
             detector (str): face detector method
-                (dlib, mtcnn, mtcnn_kalmann).
+                (dlib, mtcnn, mtcnn_kalman).
             extractor (str): library used for video reading
                 (opencv, skvideo).
             type_roi (str): method used for ROI extraction
@@ -41,7 +41,7 @@ class VideoWrapper:
             VideoWrapper: video wrapper object, able to be passed to
                 a estimator method.
         """
-        self._video = pyVHRVideo(video_path)
+        self._video = Video(video_path)
         self._detector = detector
         self._extractor = extractor
         self._end_time = end_time
