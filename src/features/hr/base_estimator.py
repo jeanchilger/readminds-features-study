@@ -14,7 +14,6 @@ class BaseEstimator:
         self._roi_mask = self._video_wrapper.type_roi
         self._skin_adapt = self._video_wrapper.skin_thresh_adapt
         self._skin_fix = self._video_wrapper.skin_thresh_fix
-        self._end_time = self._video_wrapper.end_time
         self._rect_coords = self._video_wrapper.rect_coords
         self._rect_regions = self._video_wrapper.rect_regions
 

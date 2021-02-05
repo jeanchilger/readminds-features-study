@@ -24,7 +24,6 @@ class ICAEstimator(BaseEstimator):
 
     def run_offline(self):
         estimation = self._ica.runOffline(
-            endTime=self._end_time,
             ROImask=self._roi_mask,
             skinAdapt=self._skin_adapt,
             skinFix=self._skin_fix,

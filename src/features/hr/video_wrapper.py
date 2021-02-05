@@ -12,7 +12,7 @@ class VideoWrapper:
             self, video_path, detector, extractor,
             type_roi, skin_thresh_adapt=None,
             skin_thresh_fix=None, rect_coords=None,
-            rect_regions=None, end_time="INF"):
+            rect_regions=None):
         """Creates a VideoWrapper given a video path, face
         detector, video extractor, ROI method and ROI related
         parameters.
@@ -34,8 +34,6 @@ class VideoWrapper:
                 'lcheek', 'rcheek', 'nose']. Defaults to None.
             rect_coords (list, optional): List of retangular ROIs, e.g
                 [[X0, Y0, W0, H0], [Xn, Yn, Wn, Hn]]. Defaults to None.
-            end_time (int, optional): Final instant of the Video in
-                seconds. Defaults to None.
 
         Returns:
             VideoWrapper: video wrapper object, able to be passed to
@@ -44,7 +42,6 @@ class VideoWrapper:
         self._video = Video(video_path)
         self._detector = detector
         self._extractor = extractor
-        self._end_time = end_time
         self._type_roi = type_roi
         self._skin_thresh_adapt = skin_thresh_adapt
         self._skin_thresh_fix = skin_thresh_fix
@@ -74,10 +71,6 @@ class VideoWrapper:
     @property
     def skin_thresh_fix(self):
         return self._skin_thresh_fix
-
-    @property
-    def end_time(self):
-        return self._end_time
 
     @property
     def rect_coords(self):
