@@ -47,3 +47,23 @@ cc_library(
     ],
     alwayslink = 1,
 )
+
+cc_library(
+    name = "landmarks_to_features_calculator",
+    srcs = ["landmarks_to_features_calculator.cc"],
+    hdrs = ["landmarks_to_features_calculator.h"],
+    visibility = [
+        "//visibility:public"
+    ],
+    deps = [
+        "//src/features/eye:eye_analyzer",
+        "//src/features/mouth:mouth_analyzer",
+        "//src/features/face:face_analyzer",
+        "//mediapipe/framework:calculator_framework",
+        "//mediapipe/framework/formats:image_frame",
+        "//mediapipe/framework/port:ret_check",
+        "//mediapipe/framework/port:status",
+        "//mediapipe/framework/tool:status_util",
+    ],
+    alwayslink = 1,
+)
