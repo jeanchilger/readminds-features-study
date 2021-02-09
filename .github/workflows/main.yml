@@ -23,7 +23,7 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Install pip
-        run: apt install python3-pip
+        run: sudo apt install python3-pip
 
       # Runs a set of commands using the runners shell
       - name: Install tools for code style checking
