@@ -24,12 +24,15 @@ double EyeAnalyzer::CalculateEyesContoursArea() {
     double left_eye_area  = cv::contourArea(eye_left_contour_);
     eye_area_ = right_eye_area + left_eye_area;
 
+    eye_right_contour_.clear();
+    eye_left_contour_.clear();
+
     return eye_area_;
 }
 
 void EyeAnalyzer::GenerateEyeContours() {
     mediapipe::NormalizedLandmark landmark;
-    int eye_right_lmark, eye_left_lmark, eye_area_;
+    int eye_right_lmark, eye_left_lmark;
     int lmarks_amount = sizeof(EYE_RIGHT_INNER_LMARKS) / sizeof(int);
     cv::Point lmark_cv_point;
 
