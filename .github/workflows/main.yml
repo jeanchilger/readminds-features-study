@@ -5,9 +5,6 @@ name: Code style analysis
 # Controls when the action will run. 
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
-  push:
-    branches:
-      - master
   pull_request:
     branches:
       - master
@@ -37,7 +34,7 @@ jobs:
       - name: Run code checking against .cc and .h files
         run: | 
           echo "Checking cpp files" \
-          find ./src -type f \( -iname \*.cc -o -iname \*.h \) -exec cpplint {} \;
+          find src -type f \( -iname \*.cc -o -iname \*.h \) -exec cpplint {} \;
           
       - name: Run code checking against .py files
         run: |
