@@ -40,11 +40,6 @@ class ArrayToCsvRowCalculator : public CalculatorBase {
         ::mediapipe::Status Open(CalculatorContext* cc) override {
             ::mediapipe::ArrayToCsvRowCalculatorOptions options = 
                     cc->Options<::mediapipe::ArrayToCsvRowCalculatorOptions>();
-            
-            for (int i=0; i < options.header_size(); i++) {
-                header_.push_back(options.header(i));
-            }
-
             file_path_ = options.file_path();
 
             // Before writting, the file is created if it don't exists.
@@ -52,6 +47,16 @@ class ArrayToCsvRowCalculator : public CalculatorBase {
             ::std::fstream output_csv_file(file_path_, 
                                            std::ios_base::out | 
                                            std::ios_base::trunc);
+
+            // Writes header
+            for (int i=0; i < options.header_size(); i++) {
+                output_csv_file << options.header(i) << ",";
+            }
+
+            if (options.header_size() != 0) {
+                output_csv_file << "\n";
+            }
+
             output_csv_file.close();
 
             return ::mediapipe::OkStatus();

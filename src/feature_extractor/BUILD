@@ -28,6 +28,7 @@ cc_binary(
         "//src/features/face:face_analyzer",
         "//src/calculators:video_reader_calculator",
         "//src/calculators:landmarks_to_features_calculator",
+        "//src/calculators:array_to_csv_row_calculator",
         "//mediapipe/modules/face_landmark:face_landmark_front_cpu",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/formats:image_frame",

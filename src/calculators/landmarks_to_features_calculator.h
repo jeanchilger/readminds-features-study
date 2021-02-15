@@ -2,6 +2,9 @@
 #define READMINDS_CALCULATORS_LANDMARKS_TO_FEATURES_CALCULATOR_
 
 #include "mediapipe/framework/calculator_framework.h"
+#include "src/features/eye/eye_analyzer.h"
+#include "src/features/face/face_analyzer.h"
+#include "src/features/mouth/mouth_analyzer.h"
 
 // Document class here
 //
@@ -17,6 +20,11 @@ class LandmarksToFeaturesCalculator : public CalculatorBase {
     private:
         int frame_width_;
         int frame_height_;
+        int frame_rate_;
+
+        MouthAnalyzer mouth_descriptor_;
+        FaceAnalyzer face_descriptor_;
+        EyeAnalyzer eye_descriptor_;
 };
 
 } // namespace mediapipe

@@ -1,3 +1,5 @@
+// Copyright 2021 The authors
+
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -15,25 +17,62 @@
 #include "mediapipe/framework/port/parse_text_proto.h"
 #include "mediapipe/framework/port/status.h"
 
+#include "src/calculators/array_to_csv_row_calculator.pb.h"
 #include "src/features/face/face_analyzer.h"
 #include "src/features/mouth/mouth_analyzer.h"
 #include "src/features/eye/eye_analyzer.h"
 
 // Extracts features from video stream.
 //
-// Build: 
-//     bazel build --define MEDIAPIPE_DISABLE_GPU=1 //src/feature_extractor:feature_extractor_video --nocheck_visibility
+// Build:
+//     bazel build --define MEDIAPIPE_DISABLE_GPU=1 \
+// //src/feature_extractor:feature_extractor_video --nocheck_visibility
 // RUN:
 //     bazel-bin/src/feature_extractor/feature_extractor_video
+
+// Validates both the frame_width and frame_height
+// flags.
+static bool ValidateFrameSizeFlag(const char* flagname, int32 value) {
+    if (value > 0 && value < 20000) {
+        return true;
+    }
+
+    printf("Invalid value for --%s: %d\n", flagname, static_cast<int>(value));
+
+    return false;
+}
+
+DEFINE_int32(
+    frame_width, -1,
+    "Frame width for the input video/camera.");
+DEFINE_validator(frame_width, &ValidateFrameSizeFlag);
+
+DEFINE_int32(
+    frame_height, -1,
+    "Frame height for the input video/camera.");
+DEFINE_validator(frame_height, &ValidateFrameSizeFlag);
+
+DEFINE_int32(
+    frame_rate, -1,
+    "Frame rate for the input video/camera. Expressed in frames per second.");
 
 namespace mediapipe {
 
 mediapipe::Status RunVideoReader() {
-
+    // TODO(@jeanchilger):
+    //      - Removes a window of N seconds from beggining
     CalculatorGraphConfig config = ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
         input_stream: "in"
-        output_stream: "out_landmarks"
+        input_stream: "video_width"
+        input_stream: "video_height"
+        input_stream: "video_fps"
         output_stream: "out_image"
+        output_stream: "out_vector"
+        profiler_config {
+            trace_enabled: true
+            enable_profiler: false
+            trace_log_interval_count: 100
+        }
         node {
             calculator: "VideoReaderCalculator"
             input_side_packet: "VIDEO_STREAM:in"
@@ -44,10 +83,31 @@ mediapipe::Status RunVideoReader() {
             input_stream: "IMAGE:out_image"
             output_stream: "LANDMARKS:out_landmarks"
         }
+        node: {
+            calculator: "LandmarksToFeaturesCalculator"
+            input_side_packet: "FRAME_WIDTH:video_width"
+            input_side_packet: "FRAME_HEIGHT:video_height"
+            input_side_packet: "FPS:video_fps"
+            input_stream: "LANDMARKS:out_landmarks"
+            output_stream: "VECTOR:out_vector"
+        }
+        node {
+            calculator: "DoubleVectorToCsvRowCalculator"
+            input_stream: "out_vector"
+            node_options: {
+                [type.googleapis.com/mediapipe.ArrayToCsvRowCalculatorOptions] {
+                    file_path: "test.csv"
+                    header: ["f1", "f2", "f3", "f4", "f5", "f6", "f7"]
+                }
+            }
+        }
     )");
 
     std::map<std::string, Packet> input_side_packets;
     input_side_packets["in"] = MakePacket<std::string>();
+    input_side_packets["video_width"] = MakePacket<int>(640);
+    input_side_packets["video_height"] = MakePacket<int>(480);
+    input_side_packets["video_fps"] = MakePacket<int>(30);
 
     CalculatorGraph graph;
     MP_RETURN_IF_ERROR(graph.Initialize(config, input_side_packets));
@@ -56,98 +116,39 @@ mediapipe::Status RunVideoReader() {
     ASSIGN_OR_RETURN(OutputStreamPoller poller_image,
                    graph.AddOutputStreamPoller("out_image"));
 
-    ASSIGN_OR_RETURN(OutputStreamPoller poller_landmarks,
-                   graph.AddOutputStreamPoller("out_landmarks"));
+    ASSIGN_OR_RETURN(OutputStreamPoller poller_vector,
+                   graph.AddOutputStreamPoller("out_vector"));
 
     MP_RETURN_IF_ERROR(graph.StartRun({}));
 
     mediapipe::Packet image_packet;
-    mediapipe::Packet landmarks_packet;
+    mediapipe::Packet vector_packet;
 
-    // Instantiate analyzers
-    MouthAnalyzer mouth_descriptor;
-    FaceAnalyzer face_descriptor;
-    EyeAnalyzer eye_descriptor;
-
-    while (poller_landmarks.Next(&landmarks_packet)) {
-
+    while (poller_vector.Next(&vector_packet)) {
         // Get landmarks from output
-        auto& output_landmark_vector = 
-                landmarks_packet.Get<std::vector<NormalizedLandmarkList> >();
+        auto& output_vector =
+                vector_packet.Get<std::vector<double> >();
 
-        NormalizedLandmarkList face_landmarks = output_landmark_vector[0];
-        
+        for (double x: output_vector) {
+            std::cout << " " << x;
+        }
+
+        std::cout << "\n";
+
         // Get Image from output
         poller_image.Next(&image_packet);
 
         auto& output_frame = image_packet.Get<ImageFrame>();
         cv::Mat output_frame_mat = formats::MatView(&output_frame);
 
-        int width = output_frame.Width();
-        int height = output_frame.Height();
-
         cv::cvtColor(output_frame_mat, output_frame_mat, cv::COLOR_RGB2BGR);
 
         cv::imshow("Output Image", output_frame_mat);
 
-        mouth_descriptor.Initialize(face_landmarks, width, height);
-        face_descriptor.Initialize(face_landmarks, width, height);
-        eye_descriptor.Initialize(face_landmarks, width, height);
-
         char c = (char) cv::waitKey(1);
         if (c == 27) {
             break;
-        
-        } else if (c == 13) {
-
-            // ===========================
-            // F1
-            // ===========================
-            double f1 = mouth_descriptor.GetMouthOuter();
-            std::cout << "F1: " << f1 << std::endl;
-
-            // ===========================
-            // F2
-            // ===========================
-            double f2 = mouth_descriptor.GetMouthCorner();
-            std::cout << "F2: " << f2 << std::endl;
-
-            // ===========================
-            // F3
-            // ===========================
-            double f3 = eye_descriptor.GetEyeInnerArea();
-            std::cout << "F3: " << f3 << std::endl;
-
-            // ===========================
-            // F4
-            // ===========================
-            double f4 = eye_descriptor.GetEyebrow();
-            std::cout << "F4: " << f4 << std::endl;
-            
-            //============================
-            // F5
-            // ===========================
-            double f5 = face_descriptor.GetFaceArea();
-            std::cout << "F5: " << f5 << std::endl;
-
-            //============================
-            // F6
-            // ===========================
-            double f6 = face_descriptor.GetFaceMotion();
-            if (f6 > 0) {
-                std::cout << "F6: " << f6 << std::endl;
-            }
-
-            //============================
-            // F7
-            // ===========================
-            double f7 = face_descriptor.GetFaceCOM();
-            if (f7 > 0) {
-                std::cout << "F7: " << f7 << std::endl;
-            }
-
-            std::cout << "======================================\n\n";
-        }   
+        }
     }
 
     cv::destroyAllWindows();

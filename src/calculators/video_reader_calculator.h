@@ -28,6 +28,7 @@ class VideoReaderCalculator : public CalculatorBase {
         ImageFormat::Format format_;
         int height_;
         int width_;
+        int frame_rate_;
         Timestamp prev_timestamp_ = Timestamp::Unset();
         int readed_frames_;
 
