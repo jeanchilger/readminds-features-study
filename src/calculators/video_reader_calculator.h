@@ -1,7 +1,10 @@
-#ifndef READMINDS_CALCULATORS_VIDEO_READER_CALCULATOR_ 
-#define READMINDS_CALCULATORS_VIDEO_READER_CALCULATOR_ 
+// Copyright 2021 The authors
+
+#ifndef SRC_CALCULATORS_VIDEO_READER_CALCULATOR_H_
+#define SRC_CALCULATORS_VIDEO_READER_CALCULATOR_H_
 
 #include <stdlib.h>
+#include <memory>
 
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/formats/image_frame.h"
@@ -10,12 +13,9 @@
 
 const int DEVICE_ID = 0;
 
-//
-
 namespace mediapipe {
 
 class VideoReaderCalculator : public CalculatorBase {
-
     public:
         static ::mediapipe::Status GetContract(CalculatorContract* cc);
         ::mediapipe::Status Open(CalculatorContext* cc) override;
@@ -31,9 +31,8 @@ class VideoReaderCalculator : public CalculatorBase {
         int frame_rate_;
         Timestamp prev_timestamp_ = Timestamp::Unset();
         int readed_frames_;
-
 };
 
-} // namespace
+}  // namespace mediapipe
 
-#endif
+#endif  // SRC_CALCULATORS_VIDEO_READER_CALCULATOR_H_

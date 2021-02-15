@@ -1,3 +1,5 @@
+// Copyright 2021 The authors
+
 #include "src/calculators/landmarks_to_features_calculator.h"
 
 #include <vector>
@@ -33,7 +35,7 @@ REGISTER_CALCULATOR(LandmarksToFeaturesCalculator);
 
 ::mediapipe::Status LandmarksToFeaturesCalculator::Process(
         CalculatorContext* cc) {
-    auto& input_landmarks_vector = 
+    auto& input_landmarks_vector =
             cc->Inputs().Tag("LANDMARKS")
                     .Get<::std::vector<NormalizedLandmarkList>>();
 
@@ -51,17 +53,7 @@ REGISTER_CALCULATOR(LandmarksToFeaturesCalculator);
     double f6 = face_descriptor_.GetFaceMotion();
     double f7 = face_descriptor_.GetFaceCOM();
 
-    // ::std::vector<double> 
-
-    
-
     ::std::vector<double> features{ f1, f2, f3, f4, f5, f6, f7 };
-
-    // for (double x : features) {
-    //     ::std::cout << " " << x;
-    // }
-
-    // ::std::cout << "\n";
 
     cc->Outputs()
         .Tag("VECTOR")
@@ -76,4 +68,4 @@ REGISTER_CALCULATOR(LandmarksToFeaturesCalculator);
     return ::mediapipe::OkStatus();
 }
 
-}
+}  // namespace mediapipe

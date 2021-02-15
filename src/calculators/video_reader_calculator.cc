@@ -1,6 +1,9 @@
+// Copyright 2021 The authors
+
 #include "src/calculators/video_reader_calculator.h"
 
 #include <stdlib.h>
+#include <string>
 
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/formats/image_format.pb.h"
@@ -13,7 +16,7 @@
 namespace mediapipe {
 
 // Returns a ImageFormat based on an input.
-// This input is intended to be the number of channels 
+// This input is intended to be the number of channels
 // in source image.
 ImageFormat::Format GetImageFormat(int num_channels) {
     ImageFormat::Format format;
@@ -62,13 +65,12 @@ REGISTER_CALCULATOR(VideoReaderCalculator);
     // Sets up video capture
     const std::string file_path =
         cc->InputSidePackets().Tag("VIDEO_STREAM").Get<std::string>();
-    
+
     if (file_path.empty()) {
         cap_ = absl::make_unique<cv::VideoCapture>(DEVICE_ID, cv::CAP_ANY);
-        cap_->open(0, cv::CAP_ANY); 
-    }
+        cap_->open(0, cv::CAP_ANY);
 
-    else {
+    } else {
         cap_ = absl::make_unique<cv::VideoCapture>(file_path);
     }
 
@@ -89,7 +91,7 @@ REGISTER_CALCULATOR(VideoReaderCalculator);
     }
 
     format_ = GetImageFormat(frame.channels());
-    
+
     width_ = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_WIDTH));
     height_ = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_HEIGHT));
     frame_rate_ = static_cast<int>(cap_->get(cv::CAP_PROP_FPS));
@@ -106,7 +108,7 @@ REGISTER_CALCULATOR(VideoReaderCalculator);
             << file_path;
     }
 
-    ::std::cout << cc->InputTimestamp() << "\n"; 
+    ::std::cout << cc->InputTimestamp() << "\n";
 
     cap_->set(cv::CAP_PROP_POS_AVI_RATIO, 0);
 
@@ -115,10 +117,9 @@ REGISTER_CALCULATOR(VideoReaderCalculator);
 }
 
 ::mediapipe::Status VideoReaderCalculator::Process(CalculatorContext* cc) {
-    auto image_frame = absl::make_unique<ImageFrame>(format_, 
-                                                     width_, 
-                                                     height_, 
-                                                     1);
+    auto image_frame = absl::make_unique<ImageFrame>(
+            format_, width_, height_,
+            1);
 
     Timestamp timestamp(cap_->get(cv::CAP_PROP_POS_MSEC) * 1000);
 
@@ -166,11 +167,11 @@ REGISTER_CALCULATOR(VideoReaderCalculator);
         LOG(WARNING) << "Not all the frames are decoded (total frames: "
             << frame_count_ << " vs decoded frames: " << readed_frames_
             << ").";
-        
+
         return ::mediapipe::OkStatus();
     }
 
     return ::mediapipe::OkStatus();
 }
 
-} // namespace
+}  // namespace mediapipe

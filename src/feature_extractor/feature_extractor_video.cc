@@ -42,6 +42,16 @@ static bool ValidateFrameSizeFlag(const char* flagname, int32 value) {
     return false;
 }
 
+static bool ValidateFrameRateFlag(const char* flagname, int32 value) {
+    if (value > 0 && value < 500) {
+        return true;
+    }
+
+    printf("Invalid value for --%s: %d\n", flagname, static_cast<int>(value));
+
+    return false;
+}
+
 DEFINE_int32(
     frame_width, -1,
     "Frame width for the input video/camera.");
@@ -55,6 +65,8 @@ DEFINE_validator(frame_height, &ValidateFrameSizeFlag);
 DEFINE_int32(
     frame_rate, -1,
     "Frame rate for the input video/camera. Expressed in frames per second.");
+DEFINE_validator(frame_rate, &ValidateFrameRateFlag);
+
 
 namespace mediapipe {
 
@@ -103,11 +115,11 @@ mediapipe::Status RunVideoReader() {
         }
     )");
 
-    std::map<std::string, Packet> input_side_packets;
-    input_side_packets["in"] = MakePacket<std::string>();
-    input_side_packets["video_width"] = MakePacket<int>(640);
-    input_side_packets["video_height"] = MakePacket<int>(480);
-    input_side_packets["video_fps"] = MakePacket<int>(30);
+    ::std::map<::std::string, Packet> input_side_packets;
+    input_side_packets["in"] = MakePacket<::std::string>();
+    input_side_packets["video_width"] = MakePacket<int>(FLAGS_frame_width);
+    input_side_packets["video_height"] = MakePacket<int>(FLAGS_frame_height);
+    input_side_packets["video_fps"] = MakePacket<int>(FLAGS_frame_rate);
 
     CalculatorGraph graph;
     MP_RETURN_IF_ERROR(graph.Initialize(config, input_side_packets));
@@ -127,13 +139,13 @@ mediapipe::Status RunVideoReader() {
     while (poller_vector.Next(&vector_packet)) {
         // Get landmarks from output
         auto& output_vector =
-                vector_packet.Get<std::vector<double> >();
+                vector_packet.Get<::std::vector<double> >();
 
-        for (double x: output_vector) {
-            std::cout << " " << x;
+        for (double x : output_vector) {
+            ::std::cout << " " << x;
         }
 
-        std::cout << "\n";
+        ::std::cout << "\n";
 
         // Get Image from output
         poller_image.Next(&image_packet);
@@ -145,7 +157,7 @@ mediapipe::Status RunVideoReader() {
 
         cv::imshow("Output Image", output_frame_mat);
 
-        char c = (char) cv::waitKey(1);
+        char c = static_cast<char>(cv::waitKey(1));
         if (c == 27) {
             break;
         }
@@ -156,7 +168,7 @@ mediapipe::Status RunVideoReader() {
     return ::mediapipe::OkStatus();
 }
 
-} // namespace
+}  // namespace mediapipe
 
 
 int main(int argc, char** argv) {

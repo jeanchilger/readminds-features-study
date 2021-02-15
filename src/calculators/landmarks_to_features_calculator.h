@@ -1,5 +1,7 @@
-#ifndef READMINDS_CALCULATORS_LANDMARKS_TO_FEATURES_CALCULATOR_
-#define READMINDS_CALCULATORS_LANDMARKS_TO_FEATURES_CALCULATOR_
+// Copyright 2021 The authors
+
+#ifndef SRC_CALCULATORS_LANDMARKS_TO_FEATURES_CALCULATOR_H_
+#define SRC_CALCULATORS_LANDMARKS_TO_FEATURES_CALCULATOR_H_
 
 #include "mediapipe/framework/calculator_framework.h"
 #include "src/features/eye/eye_analyzer.h"
@@ -27,6 +29,6 @@ class LandmarksToFeaturesCalculator : public CalculatorBase {
         EyeAnalyzer eye_descriptor_;
 };
 
-} // namespace mediapipe
+}  // namespace mediapipe
 
-#endif
+#endif  // SRC_CALCULATORS_LANDMARKS_TO_FEATURES_CALCULATOR_H_
