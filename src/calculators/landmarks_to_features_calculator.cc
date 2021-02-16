@@ -39,6 +39,16 @@ REGISTER_CALCULATOR(LandmarksToFeaturesCalculator);
             cc->Inputs().Tag("LANDMARKS")
                     .Get<::std::vector<NormalizedLandmarkList>>();
 
+    current_frame_id_++;
+
+    if (current_frame_id_ % frame_rate_ != 0) {
+        cc->Outputs()
+        .Tag("VECTOR")
+        .AddPacket(MakePacket<::std::vector<double>>()
+                        .At(cc->InputTimestamp()));
+        return ::mediapipe::OkStatus();
+    }
+
     NormalizedLandmarkList input_landmarks = input_landmarks_vector[0];
 
     mouth_descriptor_.Initialize(input_landmarks, frame_width_, frame_height_);

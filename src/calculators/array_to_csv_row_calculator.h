@@ -72,6 +72,10 @@ class ArrayToCsvRowCalculator : public CalculatorBase {
                 auto begin = ::std::begin(cc->Inputs().Index(i).Get<C>());
                 auto end = ::std::end(cc->Inputs().Index(i).Get<C>());
 
+                if (begin == end) {
+                    break;
+                }
+
                 for (; begin != end; ++begin) {
                     output_csv_file << *begin << ",";
                 }

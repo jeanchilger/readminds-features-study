@@ -20,6 +20,7 @@ class LandmarksToFeaturesCalculator : public CalculatorBase {
         ::mediapipe::Status Close(CalculatorContext* cc) override;
 
     private:
+        int current_frame_id_ = 0;
         int frame_width_;
         int frame_height_;
         int frame_rate_;

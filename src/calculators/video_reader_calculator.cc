@@ -10,7 +10,6 @@
 #include "mediapipe/framework/formats/image_frame_opencv.h"
 #include "mediapipe/framework/formats/video_stream_header.h"
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
-// #include "mediapipe/framework/port/status.h"
 #include "mediapipe/framework/tool/status_util.h"
 
 namespace mediapipe {
@@ -53,10 +52,6 @@ REGISTER_CALCULATOR(VideoReaderCalculator);
     cc->InputSidePackets().Tag("VIDEO_STREAM").Set<std::string>();
 
     cc->Outputs().Tag("IMAGE").Set<ImageFrame>();
-
-    // cc->Outputs().Tag("FRAME_WIDTH").Set<int>();
-    // cc->Outputs().Tag("FRAME_HEIGHT").Set<int>();
-    // cc->Outputs().Tag("FPS").Set<int>();
 
     return mediapipe::OkStatus();
 }
@@ -111,7 +106,6 @@ REGISTER_CALCULATOR(VideoReaderCalculator);
     ::std::cout << cc->InputTimestamp() << "\n";
 
     cap_->set(cv::CAP_PROP_POS_AVI_RATIO, 0);
-
 
     return ::mediapipe::OkStatus();
 }
