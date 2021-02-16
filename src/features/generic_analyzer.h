@@ -1,5 +1,7 @@
-#ifndef READMINDS_FEATURES_GENERIC_H_
-#define READMINDS_FEATURES_GENERIC_H_
+// Copyright 2021 The authors
+
+#ifndef SRC_FEATURES_GENERIC_ANALYZER_H_
+#define SRC_FEATURES_GENERIC_ANALYZER_H_
 
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "mediapipe/framework/port/opencv_core_inc.h"
@@ -17,8 +19,8 @@ class GenericAnalyzer {
         GenericAnalyzer() = default;
 
         GenericAnalyzer(int img_width, int img_height);
-        
-        GenericAnalyzer(mediapipe::NormalizedLandmarkList landmarks, 
+
+        GenericAnalyzer(mediapipe::NormalizedLandmarkList landmarks,
                      int img_width, int img_height);
 
         virtual ~GenericAnalyzer() = default;
@@ -28,8 +30,8 @@ class GenericAnalyzer {
 
         // Sets all needed attributes
         void Initialize(int img_width, int img_height);
-        
-        void Initialize(mediapipe::NormalizedLandmarkList landmarks, 
+
+        void Initialize(mediapipe::NormalizedLandmarkList landmarks,
                         int img_width, int img_height);
 
     protected:
@@ -42,7 +44,7 @@ class GenericAnalyzer {
         // Implements the euclidean distance between
         // two cv::Points
         double EuclideanDistance(cv::Point a, cv::Point b);
-        
+
         double EuclideanDistance(double x1, double y1, double x2, double y2);
 
         // Updates the normalize factor with landmarks value
@@ -60,7 +62,6 @@ class GenericAnalyzer {
         // Computes the eucliand norm for
         // a given coordinate
         double EuclideanNorm(cv::Point landmark);
-
 };
 
-#endif
+#endif  // SRC_FEATURES_GENERIC_ANALYZER_H_

@@ -26,7 +26,9 @@
 //
 // Build:
 //     bazel build --define MEDIAPIPE_DISABLE_GPU=1 \
-// //src/feature_extractor:feature_extractor_video --nocheck_visibility
+    //src/feature_extractor:feature_extractor_video --nocheck_visibility \
+    && bazel-bin/src/feature_extractor/feature_extractor_video \
+    --frame_width=640 --frame_height=480 --frame_rate=30
 // RUN:
 //     bazel-bin/src/feature_extractor/feature_extractor_video
 
@@ -64,13 +66,13 @@ DEFINE_validator(frame_height, &ValidateFrameSizeFlag);
 
 DEFINE_int32(
         frame_rate, -1,
-        "Frame rate for the input video/camera. Expressed in frames per second.");
+        "Frame rate for the input video/camera. " +
+            "Expressed in frames per second.");
 DEFINE_validator(frame_rate, &ValidateFrameRateFlag);
 
 DEFINE_string(
         feature_file_path, "data/dataset/test.csv",
         "Path to store the resulting file.");
-
 
 namespace mediapipe {
 
@@ -113,7 +115,15 @@ mediapipe::Status RunVideoReader() {
             node_options: {
                 [type.googleapis.com/mediapipe.ArrayToCsvRowCalculatorOptions] {
                     file_path: ")" + FLAGS_feature_file_path + R"("
-                    header: ["f1", "f2", "f3", "f4", "f5", "f6", "f7"]
+                    header: [
+                        "mouth_outer",
+                        "mouth_corner",
+                        "eye_area",
+                        "eyebrow_activity",
+                        "face_area",
+                        "face_motion",
+                        "facial_com"
+                    ]
                 }
             }
         }
@@ -145,11 +155,13 @@ mediapipe::Status RunVideoReader() {
         auto& output_vector =
                 vector_packet.Get<::std::vector<double> >();
 
-        for (double x : output_vector) {
-            ::std::cout << " " << x;
-        }
+        if (!output_vector.empty()) {
+            for (double x : output_vector) {
+                ::std::cout << " " << x;
+            }
 
-        ::std::cout << "\n";
+            ::std::cout << "\n";
+        }
 
         // Get Image from output
         poller_image.Next(&image_packet);
