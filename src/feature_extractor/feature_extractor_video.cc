@@ -53,19 +53,23 @@ static bool ValidateFrameRateFlag(const char* flagname, int32 value) {
 }
 
 DEFINE_int32(
-    frame_width, -1,
-    "Frame width for the input video/camera.");
+        frame_width, -1,
+        "Frame width for the input video/camera.");
 DEFINE_validator(frame_width, &ValidateFrameSizeFlag);
 
 DEFINE_int32(
-    frame_height, -1,
-    "Frame height for the input video/camera.");
+        frame_height, -1,
+        "Frame height for the input video/camera.");
 DEFINE_validator(frame_height, &ValidateFrameSizeFlag);
 
 DEFINE_int32(
-    frame_rate, -1,
-    "Frame rate for the input video/camera. Expressed in frames per second.");
+        frame_rate, -1,
+        "Frame rate for the input video/camera. Expressed in frames per second.");
 DEFINE_validator(frame_rate, &ValidateFrameRateFlag);
+
+DEFINE_string(
+        feature_file_path, "data/dataset/test.csv",
+        "Path to store the resulting file.");
 
 
 namespace mediapipe {
@@ -108,7 +112,7 @@ mediapipe::Status RunVideoReader() {
             input_stream: "out_vector"
             node_options: {
                 [type.googleapis.com/mediapipe.ArrayToCsvRowCalculatorOptions] {
-                    file_path: "test.csv"
+                    file_path: ")" + FLAGS_feature_file_path + R"("
                     header: ["f1", "f2", "f3", "f4", "f5", "f6", "f7"]
                 }
             }
