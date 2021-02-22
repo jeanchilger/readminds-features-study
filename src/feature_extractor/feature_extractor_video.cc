@@ -86,11 +86,6 @@ mediapipe::Status RunVideoReader() {
         input_stream: "video_fps"
         output_stream: "out_image"
         output_stream: "out_vector"
-        profiler_config {
-            trace_enabled: true
-            enable_profiler: false
-            trace_log_interval_count: 100
-        }
         node {
             calculator: "VideoReaderCalculator"
             input_side_packet: "VIDEO_STREAM:in"
