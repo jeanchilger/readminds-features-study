@@ -48,7 +48,6 @@ mediapipe::Status RunVideoReader() {
 
         input.clear();
 
-        // std::cout << "\n@@@@@@@@@@@@@@@@@@@@@@@@@: " << i << std::endl << std::endl;
     }
 
     MP_RETURN_IF_ERROR(graph.CloseInputStream("in"));

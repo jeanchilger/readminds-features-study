@@ -37,7 +37,6 @@ void EyeAnalyzer::GenerateEyeContours() {
     cv::Point lmark_cv_point;
 
     for (int i=0; i < lmarks_amount; i++) {
-         
         eye_right_lmark = EYE_RIGHT_INNER_LMARKS[i];
         landmark = landmarks_.landmark(eye_right_lmark);
         lmark_cv_point = CvtNormIntoCvPoint(landmark);

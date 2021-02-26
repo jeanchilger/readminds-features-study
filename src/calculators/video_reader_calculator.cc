@@ -1,19 +1,21 @@
+// Copyright 2021 The authors
+
 #include "src/calculators/video_reader_calculator.h"
 
 #include <stdlib.h>
+#include <string>
 
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/formats/image_format.pb.h"
 #include "mediapipe/framework/formats/image_frame_opencv.h"
 #include "mediapipe/framework/formats/video_stream_header.h"
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
-// #include "mediapipe/framework/port/status.h"
 #include "mediapipe/framework/tool/status_util.h"
 
 namespace mediapipe {
 
 // Returns a ImageFormat based on an input.
-// This input is intended to be the number of channels 
+// This input is intended to be the number of channels
 // in source image.
 ImageFormat::Format GetImageFormat(int num_channels) {
     ImageFormat::Format format;
@@ -48,27 +50,28 @@ REGISTER_CALCULATOR(VideoReaderCalculator);
 ::mediapipe::Status VideoReaderCalculator::GetContract(
         CalculatorContract* cc) {
     cc->InputSidePackets().Tag("VIDEO_STREAM").Set<std::string>();
+
     cc->Outputs().Tag("IMAGE").Set<ImageFrame>();
 
     return mediapipe::OkStatus();
 }
 
 ::mediapipe::Status VideoReaderCalculator::Open(CalculatorContext* cc) {
+    // Sets up video capture
     const std::string file_path =
         cc->InputSidePackets().Tag("VIDEO_STREAM").Get<std::string>();
-    
+
     if (file_path.empty()) {
         cap_ = absl::make_unique<cv::VideoCapture>(DEVICE_ID, cv::CAP_ANY);
-        cap_->open(0, cv::CAP_ANY); 
-    }
+        cap_->open(0, cv::CAP_ANY);
 
-    else {
+    } else {
         cap_ = absl::make_unique<cv::VideoCapture>(file_path);
     }
 
     if (!cap_->isOpened()) {
         return InvalidArgumentErrorBuilder(MEDIAPIPE_LOC)
-        << "Fail to open video file at " << file_path;
+                << "Fail to open video file at " << file_path;
     }
 
     frame_count_ = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_COUNT)) -1;
@@ -83,14 +86,24 @@ REGISTER_CALCULATOR(VideoReaderCalculator);
     }
 
     format_ = GetImageFormat(frame.channels());
+
     width_ = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_WIDTH));
     height_ = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_HEIGHT));
-    
+    frame_rate_ = static_cast<int>(cap_->get(cv::CAP_PROP_FPS));
+
+    ::std::cout << "######################################################"
+                << "\n\tFRAME_WIDTH: " << width_
+                << "\n\tFRAME_HEIGHT: " << height_
+                << "\n\tFRAME_RATE: " << frame_rate_
+                << "\n#####################################################\n";
+
     if (format_ == ImageFormat::UNKNOWN) {
         return InvalidArgumentErrorBuilder(MEDIAPIPE_LOC)
             << "Unsupported video format of the video file at "
             << file_path;
     }
+
+    ::std::cout << cc->InputTimestamp() << "\n";
 
     cap_->set(cv::CAP_PROP_POS_AVI_RATIO, 0);
 
@@ -98,10 +111,9 @@ REGISTER_CALCULATOR(VideoReaderCalculator);
 }
 
 ::mediapipe::Status VideoReaderCalculator::Process(CalculatorContext* cc) {
-    auto image_frame = absl::make_unique<ImageFrame>(format_, 
-                                                     width_, 
-                                                     height_, 
-                                                     1);
+    auto image_frame = absl::make_unique<ImageFrame>(
+            format_, width_, height_,
+            1);
 
     Timestamp timestamp(cap_->get(cv::CAP_PROP_POS_MSEC) * 1000);
 
@@ -149,11 +161,11 @@ REGISTER_CALCULATOR(VideoReaderCalculator);
         LOG(WARNING) << "Not all the frames are decoded (total frames: "
             << frame_count_ << " vs decoded frames: " << readed_frames_
             << ").";
-        
+
         return ::mediapipe::OkStatus();
     }
 
     return ::mediapipe::OkStatus();
 }
 
-} // namespace
+}  // namespace mediapipe
