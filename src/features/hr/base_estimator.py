@@ -19,7 +19,7 @@ class BaseEstimator:
 
     @property
     def bpm_estimation(self):
-        return self._bpm_estimation
+        return self._bpm_estimation[0][0]
 
     def save(self, file_name):
         output = open(file_name, "w")
