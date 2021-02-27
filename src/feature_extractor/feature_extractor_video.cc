@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <string>
 
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/formats/image_frame.h"
@@ -74,6 +75,10 @@ DEFINE_string(
         feature_file_path, "data/dataset/test.csv",
         "Path to store the resulting file.");
 
+DEFINE_string(
+    video_source, "",
+    "Path to input video, empty if needed to read from a camera.");
+
 namespace mediapipe {
 
 mediapipe::Status RunVideoReader() {
@@ -125,7 +130,7 @@ mediapipe::Status RunVideoReader() {
     )");
 
     ::std::map<::std::string, Packet> input_side_packets;
-    input_side_packets["in"] = MakePacket<::std::string>();
+    input_side_packets["in"] = MakePacket<::std::string>(FLAGS_video_source);
     input_side_packets["video_width"] = MakePacket<int>(FLAGS_frame_width);
     input_side_packets["video_height"] = MakePacket<int>(FLAGS_frame_height);
     input_side_packets["video_fps"] = MakePacket<int>(FLAGS_frame_rate);
