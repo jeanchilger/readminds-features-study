@@ -1,4 +1,4 @@
-from base_estimator import BaseEstimator
+from .base_estimator import BaseEstimator
 from pyVHR.methods.ica import ICA
 
 

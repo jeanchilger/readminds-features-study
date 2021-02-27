@@ -3,7 +3,11 @@ from ica_estimator import ICAEstimator
 import argparse
 
 
-# python src/features/hr/main.py --video-path fernando-320x240-1min.mp4 --detector mtcnn_kalman --extractor skvideo --type-roi skin_adapt --skin-thresh-adapt 0.4
+"""
+python src/features/hr/main.py --video-path fernando-320x240-1min.mp4 \
+--output-file-path data/dataset/test.csv --detector mtcnn_kalman \
+--extractor skvideo --type-roi skin_adapt --skin-thresh-adapt 0.4
+"""
 
 
 def get_args():
@@ -15,6 +19,12 @@ def get_args():
         type=str,
         required=True,
         help="Path to the video input.")
+
+    parser.add_argument(
+        "-o", "--output-file-path",
+        type=str,
+        required=True,
+        help="Path to output csv file.")
 
     parser.add_argument(
         "-d", "--detector",
@@ -92,11 +102,12 @@ def test_ica_estimator(args):
         rect_coords=args.rect_coords,
         rect_regions=args.rect_regions)
 
+    output_file_path = args.output_file_path
     face_extractor.extract_faces(verbose=True)
     face_extractor.show_faces()
     ica = ICAEstimator(face_extractor)
     ica.run_offline()
-    ica.save("ica.csv")
+    ica.save(output_file_path)
 
 
 def show_estimator_config(args):
@@ -104,6 +115,7 @@ def show_estimator_config(args):
     max_str_len = max([len(val) for val in d.values() if isinstance(val, str)])
     print("=========================={}".format("="*max_str_len))
     print(" File name            : ", args.video_path)
+    print(" Output CSV file      : ", args.output_file_path)
     print(" Detector             : ", args.detector)
     print(" Extractor            : ", args.extractor)
     print(" Type ROI             : ", args.type_roi)
