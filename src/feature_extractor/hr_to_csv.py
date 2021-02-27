@@ -4,7 +4,7 @@ import argparse
 import pandas as pd
 
 
-# python3 -m src.feature_extractor.hr_to_csv --video-path fernando-320x240-1min.mp4 --output-path data/dataset/test.csv --detector mtcnn_kalman --extractor skvideo --type-roi skin_adapt --skin-thresh-adapt 0.4
+AMOUNT_OF_FEATURES = 7
 
 
 def get_args():
@@ -21,7 +21,7 @@ def get_args():
         "-o", "--output-path",
         type=str,
         required=False,
-        help="Path to output csv file.")
+        help="Path to output csv file where heart rate will be appended.")
 
     parser.add_argument(
         "-d", "--detector",
@@ -93,17 +93,18 @@ def ica_estimator(args):
 
 
 def append_heart_rate(output_file, bpm_estimations):
-    dataset = pd.read_csv(output_file, float_precision="round_trip")
+    dataset = pd.read_csv(
+        output_file, float_precision="round_trip",
+        usecols=range(0, AMOUNT_OF_FEATURES))
 
     dataset_rows_amount = dataset.shape[0]
     dataset_columns_amount = dataset.shape[1]
     hr_estimation_amount = len(bpm_estimations)
 
     if dataset_rows_amount != hr_estimation_amount:
-        print(dataset_rows_amount, hr_estimation_amount)
         raise Exception(
-            "Dataset amount of rows " +
-            "and heart rate estimations lenght must match")
+            "Dataset samples amount and heart rate " +
+            "estimations must match in lenght")
 
     dataset.insert(dataset_columns_amount, "hr", bpm_estimations)
 
@@ -126,10 +127,23 @@ def show_estimator_config(args):
     print("=========================={}".format("="*max_str_len))
 
 
-if __name__ == "__main__":
-    args = get_args()
-    show_estimator_config(args)
-    # bpm_estimations = ica_estimator(args)
+def dummy_test(args):
+    """
+    To run this test a csv with features
+    F1-F7 must be generated before hand.
+
+    bazel-bin/src/feature_extractor/feature_extractor_video \
+    --frame_width=320 --frame_height=240 --frame_rate=50 \
+    --video_source=data/videos/fernando-320x240-1min.mp4
+
+    python3 -m src.feature_extractor.hr_to_csv --video-path \
+    fernando-320x240-1min.mp4 --output-path data/dataset/test.csv \
+    --detector mtcnn_kalman --extractor skvideo --type-roi skin_adapt \
+    --skin-thresh-adapt 0.4
+
+    PS: this test can be removed when everything is working properly
+    """
+    # Heart rate estimations for fernando-320x240-1min.mp4
     bpm_estimations = [
         82.03125,
         82.03125,
@@ -190,4 +204,12 @@ if __name__ == "__main__":
         54.19921875,
         82.03125,
         83.49609375]
+
+    append_heart_rate(args.output_path, bpm_estimations)
+
+
+if __name__ == "__main__":
+    args = get_args()
+    show_estimator_config(args)
+    bpm_estimations = ica_estimator(args)
     append_heart_rate(args.output_path, bpm_estimations)

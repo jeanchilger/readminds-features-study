@@ -3,8 +3,11 @@ from ica_estimator import ICAEstimator
 import argparse
 
 
-# python src/features/hr/main.py --video-path fernando-320x240-1min.mp4 --output-file-path data/dataset/test.csv
-# --detector mtcnn_kalman --extractor skvideo --type-roi skin_adapt --skin-thresh-adapt 0.4
+"""
+python src/features/hr/main.py --video-path fernando-320x240-1min.mp4 \
+--output-file-path data/dataset/test.csv --detector mtcnn_kalman \
+--extractor skvideo --type-roi skin_adapt --skin-thresh-adapt 0.4
+"""
 
 
 def get_args():
@@ -98,7 +101,7 @@ def test_ica_estimator(args):
         skin_thresh_fix=args.skin_thresh_fix,
         rect_coords=args.rect_coords,
         rect_regions=args.rect_regions)
-    
+
     output_file_path = args.output_file_path
     face_extractor.extract_faces(verbose=True)
     face_extractor.show_faces()

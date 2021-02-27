@@ -4,7 +4,6 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-#include <string>
 
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/formats/image_frame.h"
