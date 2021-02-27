@@ -74,6 +74,20 @@ def get_args():
 
 
 def ica_estimator(args):
+    """Method that generates heart rate estimations for a given
+    input video, based in ICA rPPG method (check ica_estimator.py
+    for more details).
+
+    Args:
+        args (argparse.Namespace): object containing Heart Rate
+            estimator parameters (more details in video_wrapper.py).
+
+    Returns:
+        list: column-like array containing heart rate estimations,
+            amount of rows matches the input video duration in
+            seconds.
+
+    """
     face_extractor = VideoWrapper(
         video_path=args.video_path,
         detector=args.detector,
@@ -93,6 +107,20 @@ def ica_estimator(args):
 
 
 def append_heart_rate(output_file, bpm_estimations):
+    """Append heart rate estimations in the already
+    existing dataset of features (F1-F7).
+
+    Args:
+        output_file (str): path to csv file containing the
+            features F1-F7.
+        bpm_estimations (list): column-like array containing
+            heart rate estimations.
+
+    Raises:
+        Exception: if the dataset amount of samples differ
+            from the amount of heart rate estimations an
+            exception is raised.
+    """
     dataset = pd.read_csv(
         output_file, float_precision="round_trip",
         usecols=range(0, AMOUNT_OF_FEATURES))
