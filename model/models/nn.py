@@ -41,9 +41,14 @@ def create_rnn_model(input_size, output_size):
 
     model.add(keras.layers.Embedding(
             input_dim=input_size,
-            output_dim=int(input_size / 2)))
+            output_dim=int(16)))
 
-    model.add(keras.layers.SimpleRNN(16))
+    # With all these layers or with the uncommented one
+    # the results were the same :(.
+    # model.add(keras.layers.SimpleRNN(16, return_sequences=True))
+    # model.add(keras.layers.SimpleRNN(64, return_sequences=True))
+    # model.add(keras.layers.SimpleRNN(64, return_sequences=True))
+    model.add(keras.layers.SimpleRNN(32))
     model.add(keras.layers.Dense(output_size, activation="softmax"))
 
     model.compile(
