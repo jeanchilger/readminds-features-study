@@ -3,7 +3,8 @@ import csv
 
 
 def resolve_path(path):
-    """Creates folders for given path, if they don't exists.
+    """
+    Creates folders for given path, if they don't exists.
 
     Args:
         path (path): Path to be created.
@@ -18,7 +19,8 @@ def resolve_path(path):
 
 
 def save_results_to_csv(file_path, results, headers):
-    """Writes results to a csv file.
+    """
+    Writes results to a csv file.
 
     Args:
         file_path (str): File destination path.

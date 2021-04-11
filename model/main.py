@@ -3,7 +3,7 @@ import csv
 import numpy as np
 
 from kerastuner.tuners import RandomSearch
-from models.nn import create_model
+from models.nn import create_model, create_rnn_model
 from preprocessing import normalize_and_encode
 from tensorflow import keras
 from utils import set_random_state
@@ -102,8 +102,8 @@ def calibration_validation_split(
 
 def run_subject_model_experiment(
         compiled_data, feature_headers, label_header, testable_subjects,
-        results_path="results/model/subject-training.csv",
-        subject_header="subject", early_stop_patience=100, verbose=0):
+        results_path="results/model", subject_header="subject",
+        early_stop_patience=100, verbose=0):
     """Runs "Subject Model" experiment.
 
     The training process is as follows: First, a generic model is
@@ -157,6 +157,9 @@ def run_subject_model_experiment(
     # Specialize model for each subject
     scores = []
     for subject_id in testable_subjects:
+        if subject_id > 915:
+            break
+
         console.warning("Subject: " + str(subject_id))
 
         subject_model = keras.models.load_model(
@@ -180,8 +183,8 @@ def run_subject_model_experiment(
 
     scores = np.array(scores)
     save_results_to_csv(
-            results_path, scores,
-            ["subject_id", "loss", "accuracy"])
+            os.path.join(results_path, "subject-training.csv"),
+            scores, ["subject_id", "loss", "accuracy"])
 
     console.error("ACC @ Mean: {:.3f}%".format(
             np.mean(scores, axis=0)[1] * 100))
@@ -242,12 +245,73 @@ def run_feature_group_experiment(
                 verbose=verbose)
 
 
+def run_rnn_subject_experiment(
+        compiled_data, feature_headers, label_header, testable_subjects,
+        results_path="results/model", subject_header="subject",
+        early_stop_patience=100, verbose=0):
+    
+    dataset = normalize_and_encode(
+            compiled_data, feature_headers, label_header)
+
+    # Split dataset into calibration and validation
+    # data (aka training and testing data)
+    train_X, train_y, test_X, test_y = calibration_validation_split(
+            dataset, feature_headers, label_header)
+
+    early_stop = keras.callbacks.EarlyStopping(patience=early_stop_patience)
+
+    # Creates the generic, unspecialized, model
+    generic_model = create_rnn_model(
+            input_size=len(feature_headers),
+            output_size=len(dataset[label_header].unique()))
+    generic_model.fit(
+            train_X, train_y, epochs=1000, batch_size=500,
+            validation_data=(test_X, test_y), verbose=verbose)
+
+    generic_model.save("readminds_trained_models/generic_rnn_model")
+
+    # Specialize model for each subject
+    scores = []
+    for subject_id in testable_subjects:
+        if subject_id > 915:
+            break
+
+        console.warning("Subject: " + str(subject_id))
+
+        subject_model = keras.models.load_model(
+                "readminds_trained_models/generic_rnn_model")
+
+        # Get subject specific data
+        train_sub_X, train_sub_y, test_sub_X, test_sub_y = \
+            calibration_validation_split(
+                    dataset[dataset[subject_header] == subject_id],
+                    feature_headers, label_header)
+
+        subject_model.fit(
+                train_sub_X, train_sub_y, epochs=1000,
+                batch_size=50, validation_data=(test_sub_X, test_sub_y),
+                callbacks=[early_stop], verbose=verbose)
+
+        score = subject_model.evaluate(test_sub_X, test_sub_y, verbose=0)
+        scores.append([subject_id, *score])
+
+        print("\tAccuracy: {:.3f}%".format(score[1] * 100))
+
+    scores = np.array(scores)
+    save_results_to_csv(
+            os.path.join(results_path, "subject-rnn-training.csv"),
+            scores, ["subject_id", "loss", "accuracy"])
+
+    console.error("ACC @ Mean: {:.3f}%".format(
+            np.mean(scores, axis=0)[1] * 100))
+
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
         "-t", "--train-strategy", help="Model training type.",
         dest="train_strategy", default="subject",
-        choices=["subject", "feature-group"])
+        choices=["subject", "feature-group", "subject-rnn"])
 
 parser.add_argument(
         "-r", "--results-path", help="Path to store the results.",
@@ -314,4 +378,11 @@ if __name__ == "__main__":
 
         run_feature_group_experiment(
                 compiled_data, base_facial_features, label_header,
+                testable_subjects, results_path)
+
+    elif train_strategy == "subject-rnn":
+        console.error("Running 'Subject RNN' training strategy.", bold=True)
+
+        run_rnn_subject_experiment(
+                compiled_data, feature_headers, label_header,
                 testable_subjects, results_path)
