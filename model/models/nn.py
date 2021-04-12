@@ -57,6 +57,7 @@ def create_rnn_model(input_size, output_size):
 
     return model
 
+
 def create_lstm_model(input_size, output_size):
     """Creates a RNN-LSTM model.
 

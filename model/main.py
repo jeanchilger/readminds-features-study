@@ -200,7 +200,7 @@ def run_subject_rnn_experiment(
         compiled_data, feature_headers, label_header, testable_subjects,
         results_path="results/model", subject_header="subject",
         early_stop_patience=100, verbose=0):
-    
+
     dataset = normalize_and_encode(
             compiled_data, feature_headers, label_header)
 
@@ -222,7 +222,8 @@ def run_subject_rnn_experiment(
             train_X, train_y, epochs=1000, batch_size=500,
             validation_data=(test_X, test_y), verbose=verbose)
 
-    generic_model.save_weights("readminds_trained_models/generic_rnn_model.h5")
+    generic_model.save_weights(
+            "readminds_trained_models/generic_rnn_model.h5")
 
     # Specialize model for each subject
     scores = []
@@ -233,7 +234,8 @@ def run_subject_rnn_experiment(
         subject_model = create_rnn_model(
                 input_size=len(feature_headers),
                 output_size=len(dataset[label_header].unique()))
-        subject_model.load_weights("readminds_trained_models/generic_rnn_model.h5")
+        subject_model.load_weights(
+                "readminds_trained_models/generic_rnn_model.h5")
 
         # Get subject specific data
         train_sub_X, train_sub_y, test_sub_X, test_sub_y = \
@@ -264,7 +266,7 @@ def run_subject_lstm_experiment(
         compiled_data, feature_headers, label_header, testable_subjects,
         results_path="results/model", subject_header="subject",
         early_stop_patience=100, verbose=0):
-    
+
     dataset = normalize_and_encode(
             compiled_data, feature_headers, label_header)
 
@@ -286,7 +288,8 @@ def run_subject_lstm_experiment(
             train_X, train_y, epochs=1000, batch_size=500,
             validation_data=(test_X, test_y), verbose=verbose)
 
-    generic_model.save_weights("readminds_trained_models/generic_lstm_model.h5")
+    generic_model.save_weights(
+            "readminds_trained_models/generic_lstm_model.h5")
 
     # Specialize model for each subject
     scores = []
@@ -297,7 +300,8 @@ def run_subject_lstm_experiment(
         subject_model = create_lstm_model(
                 input_size=len(feature_headers),
                 output_size=len(dataset[label_header].unique()))
-        subject_model.load_weights("readminds_trained_models/generic_lstm_model.h5")
+        subject_model.load_weights(
+                "readminds_trained_models/generic_lstm_model.h5")
 
         # Get subject specific data
         train_sub_X, train_sub_y, test_sub_X, test_sub_y = \
