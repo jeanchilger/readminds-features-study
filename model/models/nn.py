@@ -56,3 +56,28 @@ def create_rnn_model(input_size, output_size):
             metrics=["accuracy"])
 
     return model
+
+def create_lstm_model(input_size, output_size):
+    """Creates a RNN-LSTM model.
+
+    Returns:
+        keras.Sequential: Compiled model.
+    """
+
+    model = keras.Sequential()
+
+    model.add(keras.layers.Embedding(
+            input_dim=input_size,
+            output_dim=int(input_size / 2)))
+
+    model.add(keras.layers.LSTM(64, return_sequences=True))
+    model.add(keras.layers.LSTM(64, return_sequences=True))
+    model.add(keras.layers.LSTM(16))
+
+    model.add(keras.layers.Dense(output_size, activation="softmax"))
+
+    model.compile(
+            optimizer="adam", loss="sparse_categorical_crossentropy",
+            metrics=["accuracy"])
+
+    return model
