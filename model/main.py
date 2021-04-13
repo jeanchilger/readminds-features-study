@@ -1,15 +1,21 @@
 import argparse
 import csv
 import numpy as np
+import os
 
 from kerastuner.tuners import RandomSearch
-from models.nn import create_model
+from models.nn import (
+    create_model,
+    create_rnn_model,
+    create_lstm_model,
+)
 from preprocessing import normalize_and_encode
 from tensorflow import keras
 from utils import set_random_state
 from utils import console
 from utils.dataset import (
     DataProperties,
+    fix_data_rnn,
     load_data_from_dir,
     split_features_label,
 )
@@ -102,8 +108,8 @@ def calibration_validation_split(
 
 def run_subject_model_experiment(
         compiled_data, feature_headers, label_header, testable_subjects,
-        results_path="results/model/subject-training.csv",
-        subject_header="subject", early_stop_patience=100, verbose=0):
+        results_path="results/model", subject_header="subject",
+        early_stop_patience=100, verbose=0):
     """Runs "Subject Model" experiment.
 
     The training process is as follows: First, a generic model is
@@ -144,7 +150,7 @@ def run_subject_model_experiment(
             train_X, train_y, epochs=1000, batch_size=500,
             validation_data=(test_X, test_y), verbose=verbose)
 
-    generic_model.save("readminds_trained_models/generic_model")
+    generic_model.save_weights("readminds_trained_models/generic_model.h5")
 
     # NOTE: Training the generic model every time in the loop
     # has given an accuracy of 62.02% while using a single training for
@@ -157,10 +163,13 @@ def run_subject_model_experiment(
     # Specialize model for each subject
     scores = []
     for subject_id in testable_subjects:
+
         console.warning("Subject: " + str(subject_id))
 
-        subject_model = keras.models.load_model(
-                "readminds_trained_models/generic_model")
+        subject_model = create_model(
+                input_size=len(feature_headers),
+                output_size=len(dataset[label_header].unique()))
+        subject_model.load_weights("readminds_trained_models/generic_model.h5")
 
         # Get subject specific data
         train_sub_X, train_sub_y, test_sub_X, test_sub_y = \
@@ -180,8 +189,140 @@ def run_subject_model_experiment(
 
     scores = np.array(scores)
     save_results_to_csv(
-            results_path, scores,
-            ["subject_id", "loss", "accuracy"])
+            os.path.join(results_path, "subject-training.csv"),
+            scores, ["subject_id", "loss", "accuracy"])
+
+    console.error("ACC @ Mean: {:.3f}%".format(
+            np.mean(scores, axis=0)[1] * 100))
+
+
+def run_subject_rnn_experiment(
+        compiled_data, feature_headers, label_header, testable_subjects,
+        results_path="results/model", subject_header="subject",
+        early_stop_patience=100, verbose=0):
+
+    dataset = normalize_and_encode(
+            compiled_data, feature_headers, label_header)
+
+    # Split dataset into calibration and validation
+    # data (aka training and testing data)
+    train_X, train_y, test_X, test_y = calibration_validation_split(
+            dataset, feature_headers, label_header)
+
+    train_X = fix_data_rnn(train_X)
+    test_X = fix_data_rnn(test_X)
+
+    early_stop = keras.callbacks.EarlyStopping(patience=early_stop_patience)
+
+    # Creates the generic, unspecialized, model
+    generic_model = create_rnn_model(
+            input_size=len(feature_headers),
+            output_size=len(dataset[label_header].unique()))
+    generic_model.fit(
+            train_X, train_y, epochs=1000, batch_size=500,
+            validation_data=(test_X, test_y), verbose=verbose)
+
+    generic_model.save_weights(
+            "readminds_trained_models/generic_rnn_model.h5")
+
+    # Specialize model for each subject
+    scores = []
+    for subject_id in testable_subjects:
+
+        console.warning("Subject: " + str(subject_id))
+
+        subject_model = create_rnn_model(
+                input_size=len(feature_headers),
+                output_size=len(dataset[label_header].unique()))
+        subject_model.load_weights(
+                "readminds_trained_models/generic_rnn_model.h5")
+
+        # Get subject specific data
+        train_sub_X, train_sub_y, test_sub_X, test_sub_y = \
+            calibration_validation_split(
+                    dataset[dataset[subject_header] == subject_id],
+                    feature_headers, label_header)
+
+        subject_model.fit(
+                train_sub_X, train_sub_y, epochs=1000,
+                batch_size=50, validation_data=(test_sub_X, test_sub_y),
+                callbacks=[early_stop], verbose=verbose)
+
+        score = subject_model.evaluate(test_sub_X, test_sub_y, verbose=0)
+        scores.append([subject_id, *score])
+
+        print("\tAccuracy: {:.3f}%".format(score[1] * 100))
+
+    scores = np.array(scores)
+    save_results_to_csv(
+            os.path.join(results_path, "subject-rnn-training.csv"),
+            scores, ["subject_id", "loss", "accuracy"])
+
+    console.error("ACC @ Mean: {:.3f}%".format(
+            np.mean(scores, axis=0)[1] * 100))
+
+
+def run_subject_lstm_experiment(
+        compiled_data, feature_headers, label_header, testable_subjects,
+        results_path="results/model", subject_header="subject",
+        early_stop_patience=100, verbose=0):
+
+    dataset = normalize_and_encode(
+            compiled_data, feature_headers, label_header)
+
+    # Split dataset into calibration and validation
+    # data (aka training and testing data)
+    train_X, train_y, test_X, test_y = calibration_validation_split(
+            dataset, feature_headers, label_header)
+
+    train_X = fix_data_rnn(train_X)
+    test_X = fix_data_rnn(test_X)
+
+    early_stop = keras.callbacks.EarlyStopping(patience=early_stop_patience)
+
+    # Creates the generic, unspecialized, model
+    generic_model = create_lstm_model(
+            input_size=len(feature_headers),
+            output_size=len(dataset[label_header].unique()))
+    generic_model.fit(
+            train_X, train_y, epochs=1000, batch_size=500,
+            validation_data=(test_X, test_y), verbose=verbose)
+
+    generic_model.save_weights(
+            "readminds_trained_models/generic_lstm_model.h5")
+
+    # Specialize model for each subject
+    scores = []
+    for subject_id in testable_subjects:
+
+        console.warning("Subject: " + str(subject_id))
+
+        subject_model = create_lstm_model(
+                input_size=len(feature_headers),
+                output_size=len(dataset[label_header].unique()))
+        subject_model.load_weights(
+                "readminds_trained_models/generic_lstm_model.h5")
+
+        # Get subject specific data
+        train_sub_X, train_sub_y, test_sub_X, test_sub_y = \
+            calibration_validation_split(
+                    dataset[dataset[subject_header] == subject_id],
+                    feature_headers, label_header)
+
+        subject_model.fit(
+                train_sub_X, train_sub_y, epochs=1000,
+                batch_size=50, validation_data=(test_sub_X, test_sub_y),
+                callbacks=[early_stop], verbose=verbose)
+
+        score = subject_model.evaluate(test_sub_X, test_sub_y, verbose=0)
+        scores.append([subject_id, *score])
+
+        print("\tAccuracy: {:.3f}%".format(score[1] * 100))
+
+    scores = np.array(scores)
+    save_results_to_csv(
+            os.path.join(results_path, "subject-lstm-training.csv"),
+            scores, ["subject_id", "loss", "accuracy"])
 
     console.error("ACC @ Mean: {:.3f}%".format(
             np.mean(scores, axis=0)[1] * 100))
@@ -247,7 +388,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
         "-t", "--train-strategy", help="Model training type.",
         dest="train_strategy", default="subject",
-        choices=["subject", "feature-group"])
+        choices=["subject", "subject-rnn", "subject-lstm", "feature-group"])
 
 parser.add_argument(
         "-r", "--results-path", help="Path to store the results.",
@@ -306,6 +447,20 @@ if __name__ == "__main__":
         console.error("Running 'Subject' training strategy.", bold=True)
 
         run_subject_model_experiment(
+                compiled_data, feature_headers, label_header,
+                testable_subjects, results_path)
+
+    elif train_strategy == "subject-rnn":
+        console.error("Running 'Subject RNN' training strategy.", bold=True)
+
+        run_subject_rnn_experiment(
+                compiled_data, feature_headers, label_header,
+                testable_subjects, results_path)
+
+    elif train_strategy == "subject-lstm":
+        console.error("Running 'Subject LSTM' training strategy.", bold=True)
+
+        run_subject_lstm_experiment(
                 compiled_data, feature_headers, label_header,
                 testable_subjects, results_path)
 

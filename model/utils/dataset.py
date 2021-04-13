@@ -52,6 +52,28 @@ def split_features_label(dataset, feature_headers, label_header):
     return np.array(dataset_X), np.array(dataset_y)
 
 
+def fix_data_rnn(data):
+    """
+    Adjusts the given data to be accepted by a recurrent
+    neural network.
+
+    Args:
+        data (list or np.array): Data to be fixed.
+
+    Returns:
+        np.array: Reshaped data.
+    """
+
+    shape = None
+
+    if type(data) == list:
+        shape = (len(data), len(data[0]))
+    else:
+        shape = data.shape
+
+    return np.array(data).reshape((shape[0], shape[1], 1))
+
+
 class DataProperties:
     def __init__(
             self, window_size=0,
