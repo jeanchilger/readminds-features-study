@@ -17,35 +17,38 @@
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/calculator_profile.pb.h"
 
-JNIEXPORT void JNICALL GRAPH_METHOD(nativeReset)(JNIEnv* env, jobject thiz,
-                                                 jlong handle) {
+JNIEXPORT void JNICALL GRAPH_PROFILER_METHOD(nativeReset)(JNIEnv* env,
+                                                          jobject thiz,
+                                                          jlong handle) {
   mediapipe::ProfilingContext* profiling_context =
       reinterpret_cast<mediapipe::ProfilingContext*>(handle);
   profiling_context->Reset();
 }
 
-JNIEXPORT void JNICALL GRAPH_METHOD(nativePause)(JNIEnv* env, jobject thiz,
-                                                 jlong handle) {
+JNIEXPORT void JNICALL GRAPH_PROFILER_METHOD(nativePause)(JNIEnv* env,
+                                                          jobject thiz,
+                                                          jlong handle) {
   mediapipe::ProfilingContext* profiling_context =
       reinterpret_cast<mediapipe::ProfilingContext*>(handle);
   profiling_context->Pause();
 }
 
-JNIEXPORT void JNICALL GRAPH_METHOD(nativeResume)(JNIEnv* env, jobject thiz,
-                                                  jlong handle) {
+JNIEXPORT void JNICALL GRAPH_PROFILER_METHOD(nativeResume)(JNIEnv* env,
+                                                           jobject thiz,
+                                                           jlong handle) {
   mediapipe::ProfilingContext* profiling_context =
       reinterpret_cast<mediapipe::ProfilingContext*>(handle);
   profiling_context->Resume();
 }
 
-JNIEXPORT jobjectArray JNICALL GRAPH_METHOD(nativeGetCalculatorProfiles)(
-    JNIEnv* env, jobject thiz, jlong handle) {
+JNIEXPORT jobjectArray JNICALL GRAPH_PROFILER_METHOD(
+    nativeGetCalculatorProfiles)(JNIEnv* env, jobject thiz, jlong handle) {
   mediapipe::ProfilingContext* profiling_context =
       reinterpret_cast<mediapipe::ProfilingContext*>(handle);
 
   std::vector<mediapipe::CalculatorProfile> profiles_vec;
   if (profiling_context->GetCalculatorProfiles(&profiles_vec) !=
-      ::mediapipe::OkStatus()) {
+      absl::OkStatus()) {
     return nullptr;
   }
   int num_profiles = profiles_vec.size();
@@ -53,8 +56,11 @@ JNIEXPORT jobjectArray JNICALL GRAPH_METHOD(nativeGetCalculatorProfiles)(
     return nullptr;
   }
 
+  // TODO: move to register natives.
+  jclass byte_array_cls = env->FindClass("[B");
   jobjectArray profiles =
-      env->NewObjectArray(num_profiles, env->FindClass("[B"), nullptr);
+      env->NewObjectArray(num_profiles, byte_array_cls, nullptr);
+  env->DeleteLocalRef(byte_array_cls);
   for (int i = 0; i < num_profiles; i++) {
     const auto& profile = profiles_vec[i];
     int size = profile.ByteSize();

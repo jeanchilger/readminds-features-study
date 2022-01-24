@@ -24,9 +24,9 @@
 #include "mediapipe/framework/port/status.h"
 #include "mediapipe/gpu/gl_calculator_helper.h"
 #include "mediapipe/gpu/shader_util.h"
-#include "mediapipe/graphs/object_detection_3d/calculators/camera_parameters.pb.h"
 #include "mediapipe/graphs/object_detection_3d/calculators/gl_animation_overlay_calculator.pb.h"
 #include "mediapipe/graphs/object_detection_3d/calculators/model_matrix.pb.h"
+#include "mediapipe/modules/objectron/calculators/camera_parameters.pb.h"
 
 namespace mediapipe {
 
@@ -128,10 +128,10 @@ class GlAnimationOverlayCalculator : public CalculatorBase {
   GlAnimationOverlayCalculator() {}
   ~GlAnimationOverlayCalculator();
 
-  static ::mediapipe::Status GetContract(CalculatorContract *cc);
+  static absl::Status GetContract(CalculatorContract *cc);
 
-  ::mediapipe::Status Open(CalculatorContext *cc) override;
-  ::mediapipe::Status Process(CalculatorContext *cc) override;
+  absl::Status Open(CalculatorContext *cc) override;
+  absl::Status Process(CalculatorContext *cc) override;
 
  private:
   bool has_video_stream_ = false;
@@ -171,11 +171,11 @@ class GlAnimationOverlayCalculator : public CalculatorBase {
       float *vertical_fov_degrees);
 
   int GetAnimationFrameIndex(Timestamp timestamp);
-  ::mediapipe::Status GlSetup();
-  ::mediapipe::Status GlBind(const TriangleMesh &triangle_mesh,
-                             const GlTexture &texture);
-  ::mediapipe::Status GlRender(const TriangleMesh &triangle_mesh,
-                               const float *model_matrix);
+  absl::Status GlSetup();
+  absl::Status GlBind(const TriangleMesh &triangle_mesh,
+                      const GlTexture &texture);
+  absl::Status GlRender(const TriangleMesh &triangle_mesh,
+                        const float *model_matrix);
   void InitializePerspectiveMatrix(float aspect_ratio,
                                    float vertical_fov_degrees, float z_near,
                                    float z_far);
@@ -198,8 +198,7 @@ class GlAnimationOverlayCalculator : public CalculatorBase {
 REGISTER_CALCULATOR(GlAnimationOverlayCalculator);
 
 // static
-::mediapipe::Status GlAnimationOverlayCalculator::GetContract(
-    CalculatorContract *cc) {
+absl::Status GlAnimationOverlayCalculator::GetContract(CalculatorContract *cc) {
   MP_RETURN_IF_ERROR(
       GlCalculatorHelper::SetupInputSidePackets(&(cc->InputSidePackets())));
   if (cc->Inputs().HasTag("VIDEO")) {
@@ -236,7 +235,7 @@ REGISTER_CALCULATOR(GlAnimationOverlayCalculator);
     cc->InputSidePackets().Tag("MASK_ASSET").Set<std::string>();
   }
 
-  return ::mediapipe::OkStatus();
+  return absl::OkStatus();
 }
 
 void GlAnimationOverlayCalculator::CalculateTriangleMeshNormals(
@@ -515,7 +514,7 @@ void GlAnimationOverlayCalculator::ComputeAspectRatioAndFovFromCameraParameters(
       std::atan(camera_parameters.portrait_height() * 0.5f) * 2 * 180 / M_PI;
 }
 
-::mediapipe::Status GlAnimationOverlayCalculator::Open(CalculatorContext *cc) {
+absl::Status GlAnimationOverlayCalculator::Open(CalculatorContext *cc) {
   cc->SetOffset(TimestampDiff(0));
   MP_RETURN_IF_ERROR(helper_.Open(cc));
 
@@ -562,7 +561,7 @@ void GlAnimationOverlayCalculator::ComputeAspectRatioAndFovFromCameraParameters(
     loaded_animation = LoadAnimationAndroid(mask_asset_name, &mask_meshes_);
     if (!loaded_animation) {
       LOG(ERROR) << "Failed to load mask asset.";
-      return ::mediapipe::UnknownError("Failed to load mask asset.");
+      return absl::UnknownError("Failed to load mask asset.");
     }
   }
   loaded_animation = LoadAnimationAndroid(asset_name, &triangle_meshes_);
@@ -571,10 +570,10 @@ void GlAnimationOverlayCalculator::ComputeAspectRatioAndFovFromCameraParameters(
 #endif
   if (!loaded_animation) {
     LOG(ERROR) << "Failed to load animation asset.";
-    return ::mediapipe::UnknownError("Failed to load animation asset.");
+    return absl::UnknownError("Failed to load animation asset.");
   }
 
-  return helper_.RunInGlContext([this, &cc]() -> ::mediapipe::Status {
+  return helper_.RunInGlContext([this, &cc]() -> absl::Status {
     if (cc->InputSidePackets().HasTag("MASK_TEXTURE")) {
       const auto &mask_texture =
           cc->InputSidePackets().Tag("MASK_TEXTURE").Get<AssetTextureFormat>();
@@ -591,7 +590,7 @@ void GlAnimationOverlayCalculator::ComputeAspectRatioAndFovFromCameraParameters(
     VLOG(2) << "Input texture size: " << texture_.width() << ", "
             << texture_.height() << std::endl;
 
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   });
 }
 
@@ -624,9 +623,8 @@ void GlAnimationOverlayCalculator::LoadModelMatrices(
   }
 }
 
-::mediapipe::Status GlAnimationOverlayCalculator::Process(
-    CalculatorContext *cc) {
-  return helper_.RunInGlContext([this, &cc]() -> ::mediapipe::Status {
+absl::Status GlAnimationOverlayCalculator::Process(CalculatorContext *cc) {
+  return helper_.RunInGlContext([this, &cc]() -> absl::Status {
     if (!initialized_) {
       MP_RETURN_IF_ERROR(GlSetup());
       initialized_ = true;
@@ -635,12 +633,15 @@ void GlAnimationOverlayCalculator::LoadModelMatrices(
 
     // Process model matrices, if any are being streamed in, and update our
     // list.
+    current_model_matrices_.clear();
     if (has_model_matrix_stream_ &&
         !cc->Inputs().Tag("MODEL_MATRICES").IsEmpty()) {
       const TimedModelMatrixProtoList &model_matrices =
           cc->Inputs().Tag("MODEL_MATRICES").Get<TimedModelMatrixProtoList>();
       LoadModelMatrices(model_matrices, &current_model_matrices_);
     }
+
+    current_mask_model_matrices_.clear();
     if (has_mask_model_matrix_stream_ &&
         !cc->Inputs().Tag("MASK_MODEL_MATRICES").IsEmpty()) {
       const TimedModelMatrixProtoList &model_matrices =
@@ -660,7 +661,7 @@ void GlAnimationOverlayCalculator::LoadModelMatrices(
     if (has_video_stream_ && !(cc->Inputs().Tag("VIDEO").IsEmpty())) {
       auto result = cc->Inputs().Tag("VIDEO").Value().Consume<GpuBuffer>();
       if (result.ok()) {
-        input_frame = std::move(result).ValueOrDie();
+        input_frame = std::move(result).value();
 #if !MEDIAPIPE_GPU_BUFFER_USE_CV_PIXEL_BUFFER
         input_frame->GetGlTextureBufferSharedPtr()->Reuse();
 #endif
@@ -676,7 +677,7 @@ void GlAnimationOverlayCalculator::LoadModelMatrices(
       dst = helper_.CreateDestinationTexture(width, height);
     } else {
       // We have an input video stream, but not for this frame. Don't render!
-      return ::mediapipe::OkStatus();
+      return absl::OkStatus();
     }
     helper_.BindFramebuffer(dst);
 
@@ -756,11 +757,11 @@ void GlAnimationOverlayCalculator::LoadModelMatrices(
     TagOrIndex(&(cc->Outputs()), "OUTPUT", 0)
         .Add(output.release(), cc->InputTimestamp());
     GLCHECK(glFrontFace(GL_CCW));
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   });
 }
 
-::mediapipe::Status GlAnimationOverlayCalculator::GlSetup() {
+absl::Status GlAnimationOverlayCalculator::GlSetup() {
   // Load vertex and fragment shaders
   const GLint attr_location[NUM_ATTRIBUTES] = {
       ATTRIB_VERTEX,
@@ -878,10 +879,10 @@ void GlAnimationOverlayCalculator::LoadModelMatrices(
       GLCHECK(glGetUniformLocation(program_, "perspectiveMatrix"));
   model_matrix_uniform_ =
       GLCHECK(glGetUniformLocation(program_, "modelMatrix"));
-  return ::mediapipe::OkStatus();
+  return absl::OkStatus();
 }
 
-::mediapipe::Status GlAnimationOverlayCalculator::GlBind(
+absl::Status GlAnimationOverlayCalculator::GlBind(
     const TriangleMesh &triangle_mesh, const GlTexture &texture) {
   GLCHECK(glUseProgram(program_));
 
@@ -912,16 +913,16 @@ void GlAnimationOverlayCalculator::LoadModelMatrices(
 
   GLCHECK(glUniformMatrix4fv(perspective_matrix_uniform_, 1, GL_FALSE,
                              perspective_matrix_));
-  return ::mediapipe::OkStatus();
+  return absl::OkStatus();
 }
 
-::mediapipe::Status GlAnimationOverlayCalculator::GlRender(
+absl::Status GlAnimationOverlayCalculator::GlRender(
     const TriangleMesh &triangle_mesh, const float *model_matrix) {
   GLCHECK(glUniformMatrix4fv(model_matrix_uniform_, 1, GL_FALSE, model_matrix));
   GLCHECK(glDrawElements(GL_TRIANGLES, triangle_mesh.index_count,
                          GL_UNSIGNED_SHORT,
                          triangle_mesh.triangle_indices.get()));
-  return ::mediapipe::OkStatus();
+  return absl::OkStatus();
 }
 
 GlAnimationOverlayCalculator::~GlAnimationOverlayCalculator() {

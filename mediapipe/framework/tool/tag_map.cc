@@ -37,7 +37,7 @@ void TagMap::InitializeNames(
   }
 }
 
-::mediapipe::Status TagMap::Initialize(
+absl::Status TagMap::Initialize(
     const proto_ns::RepeatedPtrField<ProtoString>& tag_index_names) {
   std::map<std::string, std::vector<std::string>> tag_to_names;
   for (const auto& tag_index_name : tag_index_names) {
@@ -63,7 +63,7 @@ void TagMap::InitializeNames(
       names.resize(index + 1);
     }
     if (!names[index].empty()) {
-      return ::mediapipe::FailedPreconditionErrorBuilder(MEDIAPIPE_LOC)
+      return mediapipe::FailedPreconditionErrorBuilder(MEDIAPIPE_LOC)
              << "tag \"" << tag << "\" index " << index
              << " already had a name \"" << names[index]
              << "\" but is being reassigned a name \"" << name << "\"";
@@ -81,7 +81,7 @@ void TagMap::InitializeNames(
     // loop above), this means that all indexes were used exactly once.
     const std::vector<std::string>& names = tag_to_names[item.first];
     if (tag_data.count != names.size()) {
-      auto builder = ::mediapipe::FailedPreconditionErrorBuilder(MEDIAPIPE_LOC)
+      auto builder = mediapipe::FailedPreconditionErrorBuilder(MEDIAPIPE_LOC)
                      << "Not all indexes were assigned names.  Tag \""
                      << item.first << "\" has the following:\n";
       // Note, names.size() will always be larger than tag_data.count.
@@ -100,10 +100,10 @@ void TagMap::InitializeNames(
   num_entries_ = current_index;
 
   InitializeNames(tag_to_names);
-  return ::mediapipe::OkStatus();
+  return absl::OkStatus();
 }
 
-::mediapipe::Status TagMap::Initialize(const TagAndNameInfo& info) {
+absl::Status TagMap::Initialize(const TagAndNameInfo& info) {
   if (info.tags.empty()) {
     if (!info.names.empty()) {
       mapping_.emplace(
@@ -115,7 +115,7 @@ void TagMap::InitializeNames(
   } else {
     std::map<std::string, std::vector<std::string>> tag_to_names;
     if (info.tags.size() != info.names.size()) {
-      return ::mediapipe::FailedPreconditionError(
+      return absl::FailedPreconditionError(
           "Expected info.tags.size() == info.names.size()");
     }
 
@@ -139,7 +139,7 @@ void TagMap::InitializeNames(
     // Now create the names_ array in the correctly sorted order.
     InitializeNames(tag_to_names);
   }
-  return ::mediapipe::OkStatus();
+  return absl::OkStatus();
 }
 
 proto_ns::RepeatedPtrField<ProtoString> TagMap::CanonicalEntries() const {
@@ -215,19 +215,16 @@ std::string TagMap::ShortDebugString() const {
   return output;
 }
 
-bool TagMap::HasTag(const std::string& tag) const {
-  return mapping_.find(tag) != mapping_.end();
+bool TagMap::HasTag(const absl::string_view tag) const {
+  return mapping_.contains(tag);
 }
 
-int TagMap::NumEntries(const std::string& tag) const {
+int TagMap::NumEntries(const absl::string_view tag) const {
   const auto it = mapping_.find(tag);
-  if (it == mapping_.end()) {
-    return 0;
-  }
-  return it->second.count;
+  return it != mapping_.end() ? it->second.count : 0;
 }
 
-CollectionItemId TagMap::GetId(const std::string& tag, int index) const {
+CollectionItemId TagMap::GetId(const absl::string_view tag, int index) const {
   const auto it = mapping_.find(tag);
   if (it == mapping_.end()) {
     return CollectionItemId::GetInvalid();
@@ -248,11 +245,11 @@ std::pair<std::string, int> TagMap::TagAndIndexFromId(
   return {"", -1};
 }
 
-CollectionItemId TagMap::BeginId(const std::string& tag) const {
+CollectionItemId TagMap::BeginId(const absl::string_view tag) const {
   return GetId(tag, 0);
 }
 
-CollectionItemId TagMap::EndId(const std::string& tag) const {
+CollectionItemId TagMap::EndId(const absl::string_view tag) const {
   const auto it = mapping_.find(tag);
   if (it == mapping_.end()) {
     return CollectionItemId::GetInvalid();

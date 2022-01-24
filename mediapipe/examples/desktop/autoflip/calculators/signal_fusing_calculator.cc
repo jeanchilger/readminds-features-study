@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/btree_map.h"
 #include "mediapipe/examples/desktop/autoflip/autoflip_messages.pb.h"
 #include "mediapipe/examples/desktop/autoflip/calculators/signal_fusing_calculator.pb.h"
 #include "mediapipe/framework/calculator_framework.h"
@@ -105,13 +106,13 @@ class SignalFusingCalculator : public mediapipe::CalculatorBase {
   SignalFusingCalculator(const SignalFusingCalculator&) = delete;
   SignalFusingCalculator& operator=(const SignalFusingCalculator&) = delete;
 
-  static ::mediapipe::Status GetContract(mediapipe::CalculatorContract* cc);
-  mediapipe::Status Open(mediapipe::CalculatorContext* cc) override;
-  mediapipe::Status Process(mediapipe::CalculatorContext* cc) override;
-  mediapipe::Status Close(mediapipe::CalculatorContext* cc) override;
+  static absl::Status GetContract(mediapipe::CalculatorContract* cc);
+  absl::Status Open(mediapipe::CalculatorContext* cc) override;
+  absl::Status Process(mediapipe::CalculatorContext* cc) override;
+  absl::Status Close(mediapipe::CalculatorContext* cc) override;
 
  private:
-  mediapipe::Status ProcessScene(mediapipe::CalculatorContext* cc);
+  absl::Status ProcessScene(mediapipe::CalculatorContext* cc);
   std::vector<Packet> GetSignalPackets(mediapipe::CalculatorContext* cc);
   SignalFusingCalculatorOptions options_;
   std::map<std::string, SignalSettings> settings_by_type_;
@@ -154,8 +155,7 @@ void SetupOrderedInput(mediapipe::CalculatorContract* cc) {
 }
 }  // namespace
 
-mediapipe::Status SignalFusingCalculator::Open(
-    mediapipe::CalculatorContext* cc) {
+absl::Status SignalFusingCalculator::Open(mediapipe::CalculatorContext* cc) {
   options_ = cc->Options<SignalFusingCalculatorOptions>();
   for (const auto& setting : options_.signal_settings()) {
     settings_by_type_[CreateSettingsKey(setting.type())] = setting;
@@ -166,22 +166,21 @@ mediapipe::Status SignalFusingCalculator::Open(
       process_by_scene_ = false;
     }
   }
-  return ::mediapipe::OkStatus();
+  return absl::OkStatus();
 }
 
-mediapipe::Status SignalFusingCalculator::Close(
-    mediapipe::CalculatorContext* cc) {
+absl::Status SignalFusingCalculator::Close(mediapipe::CalculatorContext* cc) {
   if (!scene_frames_.empty()) {
     MP_RETURN_IF_ERROR(ProcessScene(cc));
     scene_frames_.clear();
   }
-  return ::mediapipe::OkStatus();
+  return absl::OkStatus();
 }
 
-mediapipe::Status SignalFusingCalculator::ProcessScene(
+absl::Status SignalFusingCalculator::ProcessScene(
     mediapipe::CalculatorContext* cc) {
-  std::map<std::string, int> detection_count;
-  std::map<std::string, float> multiframe_score;
+  absl::btree_map<std::string, int> detection_count;
+  absl::btree_map<std::string, float> multiframe_score;
   // Create a unified score for all items with temporal ids.
   for (const Frame& frame : scene_frames_) {
     for (const auto& detection : frame.input_detections) {
@@ -240,7 +239,7 @@ mediapipe::Status SignalFusingCalculator::ProcessScene(
     }
   }
 
-  return ::mediapipe::OkStatus();
+  return absl::OkStatus();
 }
 
 std::vector<Packet> SignalFusingCalculator::GetSignalPackets(
@@ -260,8 +259,7 @@ std::vector<Packet> SignalFusingCalculator::GetSignalPackets(
   return signal_packets;
 }
 
-mediapipe::Status SignalFusingCalculator::Process(
-    mediapipe::CalculatorContext* cc) {
+absl::Status SignalFusingCalculator::Process(mediapipe::CalculatorContext* cc) {
   bool is_boundary = false;
   if (process_by_scene_) {
     const auto& shot_tag = (tag_input_interface_)
@@ -302,17 +300,17 @@ mediapipe::Status SignalFusingCalculator::Process(
     scene_frames_.clear();
   }
 
-  return ::mediapipe::OkStatus();
+  return absl::OkStatus();
 }
 
-::mediapipe::Status SignalFusingCalculator::GetContract(
+absl::Status SignalFusingCalculator::GetContract(
     mediapipe::CalculatorContract* cc) {
   if (cc->Inputs().NumEntries(kSignalInputsTag) > 0) {
     SetupTagInput(cc);
   } else {
     SetupOrderedInput(cc);
   }
-  return ::mediapipe::OkStatus();
+  return absl::OkStatus();
 }
 
 }  // namespace autoflip

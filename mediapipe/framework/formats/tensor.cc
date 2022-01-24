@@ -30,6 +30,9 @@
 
 namespace mediapipe {
 
+// Zero and negative values are not checked here.
+bool IsPowerOfTwo(int v) { return (v & (v - 1)) == 0; }
+
 int BhwcBatchFromShape(const Tensor::Shape& shape) {
   LOG_IF(FATAL, shape.dims.empty())
       << "Tensor::Shape must be non-empty to retrieve a named dimension";
@@ -131,10 +134,22 @@ void Tensor::AllocateMtlBuffer(id<MTLDevice> device) const {
 #endif  // MEDIAPIPE_METAL_ENABLED
 
 #if MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_30
+bool Tensor::NeedsHalfFloatRenderTarget() const {
+  static bool has_color_buffer_float =
+      gl_context_->HasGlExtension("WEBGL_color_buffer_float") ||
+      gl_context_->HasGlExtension("EXT_color_buffer_float");
+  if (!has_color_buffer_float) {
+    static bool has_color_buffer_half_float =
+        gl_context_->HasGlExtension("EXT_color_buffer_half_float");
+    LOG_IF(FATAL, !has_color_buffer_half_float)
+        << "EXT_color_buffer_half_float or WEBGL_color_buffer_float "
+        << "required on web to use MP tensor";
+    return true;
+  }
+  return false;
+}
+
 Tensor::OpenGlTexture2dView Tensor::GetOpenGlTexture2dReadView() const {
-  LOG_IF(FATAL, BhwcDepthFromShape(shape_) > 4)
-      << "OpenGlTexture2d supports depth <= 4. Current depth is "
-      << BhwcDepthFromShape(shape_);
   LOG_IF(FATAL, valid_ == kValidNone)
       << "Tensor must be written prior to read from.";
   LOG_IF(FATAL, !(valid_ & (kValidCpu | kValidOpenGlTexture2d)))
@@ -143,33 +158,45 @@ Tensor::OpenGlTexture2dView Tensor::GetOpenGlTexture2dReadView() const {
   auto lock = absl::make_unique<absl::MutexLock>(&view_mutex_);
   AllocateOpenGlTexture2d();
   if (!(valid_ & kValidOpenGlTexture2d)) {
-    uint8_t* buffer;
-    std::unique_ptr<uint8_t[]> temp_buffer;
-    if (BhwcDepthFromShape(shape_) == 4) {
-      buffer = reinterpret_cast<uint8_t*>(cpu_buffer_);
-    } else {
-      const int padded_depth = 4;
-      const int padded_depth_size = padded_depth * element_size();
-      const int padded_size = BhwcBatchFromShape(shape_) *
-                              BhwcHeightFromShape(shape_) *
-                              BhwcWidthFromShape(shape_) * padded_depth_size;
-      temp_buffer = absl::make_unique<uint8_t[]>(padded_size);
-      buffer = temp_buffer.get();
-      uint8_t* src_buffer = reinterpret_cast<uint8_t*>(cpu_buffer_);
-      const int actual_depth_size = BhwcDepthFromShape(shape_) * element_size();
-      for (int e = 0;
-           e < BhwcBatchFromShape(shape_) * BhwcHeightFromShape(shape_) *
-                   BhwcWidthFromShape(shape_);
-           e++) {
-        std::memcpy(buffer, src_buffer, actual_depth_size);
-        src_buffer += actual_depth_size;
-        buffer += padded_depth_size;
-      }
+    const int padded_size =
+        texture_height_ * texture_width_ * 4 * element_size();
+    auto temp_buffer = absl::make_unique<uint8_t[]>(padded_size);
+    uint8_t* dest_buffer = temp_buffer.get();
+    uint8_t* src_buffer = reinterpret_cast<uint8_t*>(cpu_buffer_);
+    const int num_elements = BhwcWidthFromShape(shape_) *
+                             BhwcHeightFromShape(shape_) *
+                             BhwcBatchFromShape(shape_);
+    const int actual_depth_size = BhwcDepthFromShape(shape_) * element_size();
+    const int padded_depth_size =
+        (BhwcDepthFromShape(shape_) + 3) / 4 * 4 * element_size();
+    for (int e = 0; e < num_elements; e++) {
+      std::memcpy(dest_buffer, src_buffer, actual_depth_size);
+      src_buffer += actual_depth_size;
+      dest_buffer += padded_depth_size;
     }
     // Transfer from CPU memory into GPU memory.
     glBindTexture(GL_TEXTURE_2D, opengl_texture2d_);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, BhwcWidthFromShape(shape_),
-                    BhwcHeightFromShape(shape_), GL_RGBA, GL_FLOAT, buffer);
+    // Set alignment for the proper value (default) to avoid address sanitizer
+    // error "out of boundary reading".
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+#ifdef __EMSCRIPTEN__
+    // Under WebGL1, format must match in order to use glTexSubImage2D, so if we
+    // have a half-float texture, then uploading from GL_FLOAT here would fail.
+    // We change the texture's data type to float here to accommodate.
+    // Furthermore, for a full-image replacement operation, glTexImage2D is
+    // expected to be more performant than glTexSubImage2D. Note that for WebGL2
+    // we cannot use glTexImage2D, because we allocate using glTexStorage2D in
+    // that case, which is incompatible.
+    if (gl_context_->GetGlVersion() == mediapipe::GlVersion::kGLES2) {
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture_width_, texture_height_,
+                   0, GL_RGBA, GL_FLOAT, temp_buffer.get());
+      texture_is_half_float_ = false;
+    } else
+#endif  // __EMSCRIPTEN__
+    {
+      glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texture_width_, texture_height_,
+                      GL_RGBA, GL_FLOAT, temp_buffer.get());
+    }
     glBindTexture(GL_TEXTURE_2D, 0);
     valid_ |= kValidOpenGlTexture2d;
   }
@@ -179,8 +206,60 @@ Tensor::OpenGlTexture2dView Tensor::GetOpenGlTexture2dReadView() const {
 Tensor::OpenGlTexture2dView Tensor::GetOpenGlTexture2dWriteView() const {
   auto lock = absl::make_unique<absl::MutexLock>(&view_mutex_);
   AllocateOpenGlTexture2d();
+#ifdef __EMSCRIPTEN__
+  // On web, we may have to change type from float to half-float
+  if (!texture_is_half_float_ && NeedsHalfFloatRenderTarget()) {
+    glBindTexture(GL_TEXTURE_2D, opengl_texture2d_);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture_width_, texture_height_, 0,
+                 GL_RGBA, GL_HALF_FLOAT_OES, 0 /* data */);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    texture_is_half_float_ = true;
+  }
+#endif
   valid_ = kValidOpenGlTexture2d;
   return {opengl_texture2d_, std::move(lock)};
+}
+
+Tensor::OpenGlTexture2dView::Layout
+Tensor::OpenGlTexture2dView::GetLayoutDimensions(const Tensor::Shape& shape,
+                                                 int* width, int* height) {
+  static int max_size = 0;
+  if (max_size == 0) {
+    int max_texture_size;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
+    int max_renderbuffer_size;
+    glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &max_renderbuffer_size);
+    int max_viewport_dims[2];
+    glGetIntegerv(GL_MAX_VIEWPORT_DIMS, max_viewport_dims);
+    max_size = std::min(std::min(max_texture_size, max_renderbuffer_size),
+                        std::min(max_viewport_dims[0], max_viewport_dims[1]));
+  }
+  const int num_slices = (BhwcDepthFromShape(shape) + 3) / 4;
+  const int num_elements = BhwcBatchFromShape(shape) *
+                           BhwcHeightFromShape(shape) *
+                           BhwcWidthFromShape(shape);
+  const int num_pixels = num_slices * num_elements;
+  int w = BhwcWidthFromShape(shape) * num_slices;
+  if (w <= max_size) {
+    int h = (num_pixels + w - 1) / w;
+    if (h <= max_size) {
+      *width = w;
+      *height = h;
+      return Tensor::OpenGlTexture2dView::Layout::kAligned;
+    }
+  }
+  // The best performance of a compute shader can be achived with textures'
+  // width multiple of 256. Making minimum fixed width of 256 waste memory for
+  // small tensors. The optimal balance memory-vs-performance is power of 2.
+  // The texture width and height are choosen to be closer to square.
+  float power = std::log2(std::sqrt(static_cast<float>(num_pixels)));
+  w = 1 << static_cast<int>(power);
+  int h = (num_pixels + w - 1) / w;
+  LOG_IF(FATAL, w > max_size || h > max_size)
+      << "The tensor can't fit into OpenGL Texture2D View.";
+  *width = w;
+  *height = h;
+  return Tensor::OpenGlTexture2dView::Layout::kLinearized;
 }
 
 void Tensor::AllocateOpenGlTexture2d() const {
@@ -194,9 +273,44 @@ void Tensor::AllocateOpenGlTexture2d() const {
     // supported from floating point textures.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, BhwcWidthFromShape(shape_),
-                   BhwcHeightFromShape(shape_));
+    OpenGlTexture2dView::GetLayoutDimensions(shape_, &texture_width_,
+                                             &texture_height_);
+    if (gl_context_->GetGlVersion() != mediapipe::GlVersion::kGLES2) {
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+      glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, texture_width_,
+                     texture_height_);
+    } else {
+      // GLES2.0 supports only clamp addressing mode for NPOT textures.
+      // If any of dimensions is NPOT then both addressing modes are clamp.
+      if (!IsPowerOfTwo(texture_width_) || !IsPowerOfTwo(texture_height_)) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+      }
+      // We assume all contexts will have the same extensions, so we only check
+      // once for OES_texture_float extension, to save time.
+      static bool has_oes_extension =
+          gl_context_->HasGlExtension("OES_texture_float");
+      LOG_IF(FATAL, !has_oes_extension)
+          << "OES_texture_float extension required in order to use MP tensor "
+          << "with GLES 2.0";
+      // Allocate the image data; note that it's no longer RGBA32F, so will be
+      // lower precision.
+      auto type = GL_FLOAT;
+      // On web, we might need to change type to half-float (e.g. for iOS-
+      // Safari) in order to have a valid framebuffer. See b/194442743 for more
+      // details.
+#ifdef __EMSCRIPTEN__
+      if (NeedsHalfFloatRenderTarget()) {
+        type = GL_HALF_FLOAT_OES;
+        texture_is_half_float_ = true;
+      }
+#endif  // __EMSCRIPTEN
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture_width_, texture_height_,
+                   0, GL_RGBA, type, 0 /* data */);
+    }
     glBindTexture(GL_TEXTURE_2D, 0);
+    glGenFramebuffers(1, &frame_buffer_);
   }
 }
 #endif  // MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_30
@@ -265,8 +379,12 @@ void Tensor::Move(Tensor* src) {
 
 #if MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_30
   gl_context_ = std::move(src->gl_context_);
+  frame_buffer_ = src->frame_buffer_;
+  src->frame_buffer_ = GL_INVALID_INDEX;
   opengl_texture2d_ = src->opengl_texture2d_;
   src->opengl_texture2d_ = GL_INVALID_INDEX;
+  texture_width_ = src->texture_width_;
+  texture_height_ = src->texture_height_;
 #if MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_31
   opengl_buffer_ = src->opengl_buffer_;
   src->opengl_buffer_ = GL_INVALID_INDEX;
@@ -278,38 +396,54 @@ Tensor::Tensor(ElementType element_type, const Shape& shape)
     : element_type_(element_type), shape_(shape) {}
 
 void Tensor::Invalidate() {
-  absl::MutexLock lock(&view_mutex_);
-#if MEDIAPIPE_METAL_ENABLED
-  // If memory is allocated and not owned by the metal buffer.
-  // TODO: Re-design cpu buffer memory management.
-  if (cpu_buffer_ && !metal_buffer_) {
-    DeallocateVirtualMemory(cpu_buffer_, AlignToPageSize(bytes()));
-  }
-  metal_buffer_ = nil;
-#else
-  if (cpu_buffer_) {
-    free(cpu_buffer_);
-  }
-#endif  // MEDIAPIPE_METAL_ENABLED
-  cpu_buffer_ = nullptr;
-
-  // Don't need to wait for the resource to be deleted bacause if will be
-  // released on last reference deletion inside the OpenGL driver.
 #if MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_30
-  if (opengl_texture2d_ != GL_INVALID_INDEX) {
-    GLuint opengl_texture2d = opengl_texture2d_;
-    gl_context_->RunWithoutWaiting(
-        [opengl_texture2d]() { glDeleteTextures(1, &opengl_texture2d); });
-    opengl_texture2d_ = GL_INVALID_INDEX;
-  }
+  GLuint cleanup_gl_tex = GL_INVALID_INDEX;
+  GLuint cleanup_gl_fb = GL_INVALID_INDEX;
+  GLuint cleanup_gl_buf = GL_INVALID_INDEX;
+#endif  // MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_30
+  {
+    absl::MutexLock lock(&view_mutex_);
+#if MEDIAPIPE_METAL_ENABLED
+    // If memory is allocated and not owned by the metal buffer.
+    // TODO: Re-design cpu buffer memory management.
+    if (cpu_buffer_ && !metal_buffer_) {
+      DeallocateVirtualMemory(cpu_buffer_, AlignToPageSize(bytes()));
+    }
+    metal_buffer_ = nil;
+#else
+    if (cpu_buffer_) {
+      free(cpu_buffer_);
+    }
+#endif  // MEDIAPIPE_METAL_ENABLED
+    cpu_buffer_ = nullptr;
+
+    // Don't need to wait for the resource to be deleted bacause if will be
+    // released on last reference deletion inside the OpenGL driver.
+#if MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_30
+    std::swap(cleanup_gl_tex, opengl_texture2d_);
+    std::swap(cleanup_gl_fb, frame_buffer_);
 #if MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_31
-  if (opengl_buffer_ != GL_INVALID_INDEX) {
-    GLuint opengl_buffer = opengl_buffer_;
-    gl_context_->RunWithoutWaiting(
-        [opengl_buffer]() { glDeleteBuffers(1, &opengl_buffer); });
-    opengl_buffer_ = GL_INVALID_INDEX;
-  }
+    std::swap(cleanup_gl_buf, opengl_buffer_);
 #endif  // MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_31
+#endif  // MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_30
+  }
+  // Do not hold the view mutex while invoking GlContext::RunWithoutWaiting,
+  // since that method may acquire the context's own lock.
+#if MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_30
+  if (cleanup_gl_tex != GL_INVALID_INDEX || cleanup_gl_fb != GL_INVALID_INDEX ||
+      cleanup_gl_buf != GL_INVALID_INDEX)
+    gl_context_->RunWithoutWaiting([cleanup_gl_tex, cleanup_gl_fb
+#if MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_31
+                                    ,
+                                    cleanup_gl_buf
+#endif  // MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_31
+    ]() {
+      glDeleteTextures(1, &cleanup_gl_tex);
+      glDeleteFramebuffers(1, &cleanup_gl_fb);
+#if MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_31
+      glDeleteBuffers(1, &cleanup_gl_buf);
+#endif  // MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_31
+    });
 #endif  // MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_30
 }
 
@@ -332,6 +466,8 @@ Tensor::CpuReadView Tensor::GetCpuReadView() const {
 
 #if MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_30
 #if MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_31
+    // TODO: we cannot just grab the GL context's lock while holding
+    // the view mutex here.
     if (valid_ & kValidOpenGlBuffer) {
       gl_context_->Run([this]() {
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, opengl_buffer_);
@@ -343,68 +479,36 @@ Tensor::CpuReadView Tensor::GetCpuReadView() const {
     } else
 #endif  // MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_31
 
-        // Transfer data from texture if not transferred from SSBO/MTLBuffer
-        // yet.
-        if (valid_ & kValidOpenGlTexture2d) {
-      gl_context_->Run([this]() {
-        GLint current_fbo;
-        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &current_fbo);
-
-        uint8_t* buffer;
-        std::unique_ptr<uint8_t[]> temp_buffer;
-        if (BhwcDepthFromShape(shape_) == 4) {
-          buffer = reinterpret_cast<uint8_t*>(cpu_buffer_);
-        } else {
-          const int padded_depth = (BhwcDepthFromShape(shape_) + 3) / 4 * 4;
+      // Transfer data from texture if not transferred from SSBO/MTLBuffer
+      // yet.
+      if (valid_ & kValidOpenGlTexture2d) {
+        gl_context_->Run([this]() {
           const int padded_size =
-              BhwcBatchFromShape(shape_) * BhwcHeightFromShape(shape_) *
-              BhwcWidthFromShape(shape_) * padded_depth * element_size();
-          temp_buffer = absl::make_unique<uint8_t[]>(padded_size);
-          buffer = temp_buffer.get();
-        }
+              texture_height_ * texture_width_ * 4 * element_size();
+          auto temp_buffer = absl::make_unique<uint8_t[]>(padded_size);
+          uint8_t* buffer = temp_buffer.get();
 
-        GLint color_attachment_name;
-        glGetFramebufferAttachmentParameteriv(
-            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-            GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &color_attachment_name);
-        if (color_attachment_name != opengl_texture2d_) {
-          // Save the viewport. Note that we assume that the color attachment is
-          // a GL_TEXTURE_2D texture.
-          GLint viewport[4];
-          glGetIntegerv(GL_VIEWPORT, viewport);
-
-          // Set the data from GLTexture object.
-          glViewport(0, 0, BhwcWidthFromShape(shape_),
-                     BhwcHeightFromShape(shape_));
+          glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer_);
           glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                  GL_TEXTURE_2D, opengl_texture2d_, 0);
-          glReadPixels(0, 0, BhwcWidthFromShape(shape_),
-                       BhwcHeightFromShape(shape_), GL_RGBA, GL_FLOAT, buffer);
-
-          // Restore from the saved viewport and color attachment name.
-          glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
-          glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                 GL_TEXTURE_2D, color_attachment_name, 0);
-        } else {
-          glReadPixels(0, 0, BhwcWidthFromShape(shape_),
-                       BhwcHeightFromShape(shape_), GL_RGBA, GL_FLOAT, buffer);
-        }
-        if (BhwcDepthFromShape(shape_) < 4) {
+          glPixelStorei(GL_PACK_ALIGNMENT, 4);
+          glReadPixels(0, 0, texture_width_, texture_height_, GL_RGBA, GL_FLOAT,
+                       buffer);
           uint8_t* dest_buffer = reinterpret_cast<uint8_t*>(cpu_buffer_);
           const int actual_depth_size =
               BhwcDepthFromShape(shape_) * element_size();
-          const int padded_depth_size = 4 * element_size();
-          for (int e = 0;
-               e < BhwcBatchFromShape(shape_) * BhwcHeightFromShape(shape_) *
-                       BhwcWidthFromShape(shape_);
-               e++) {
+          const int num_slices = (BhwcDepthFromShape(shape_) + 3) / 4;
+          const int padded_depth_size = num_slices * 4 * element_size();
+          const int num_elements = BhwcWidthFromShape(shape_) *
+                                   BhwcHeightFromShape(shape_) *
+                                   BhwcBatchFromShape(shape_);
+          for (int e = 0; e < num_elements; e++) {
             std::memcpy(dest_buffer, buffer, actual_depth_size);
             dest_buffer += actual_depth_size;
             buffer += padded_depth_size;
           }
-        }
-      });
-    }
+        });
+      }
 #endif  // MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_30
     valid_ |= kValidCpu;
   }

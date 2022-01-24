@@ -84,7 +84,7 @@ TEST_F(TensorConverterCalculatorTest, RandomMatrixColMajor) {
 
     // Run the calculator and verify that one output is generated.
     CalculatorGraphConfig graph_config =
-        ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+        mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
           input_stream: "matrix"
           node {
             calculator: "TensorConverterCalculator"
@@ -96,7 +96,7 @@ TEST_F(TensorConverterCalculatorTest, RandomMatrixColMajor) {
               }
             }
           }
-        )");
+        )pb");
     std::vector<Packet> output_packets;
     tool::AddVectorSink("tensor", &graph_config, &output_packets);
 
@@ -146,7 +146,7 @@ TEST_F(TensorConverterCalculatorTest, RandomMatrixRowMajor) {
 
     // Run the calculator and verify that one output is generated.
     CalculatorGraphConfig graph_config =
-        ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+        mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
           input_stream: "matrix"
           node {
             calculator: "TensorConverterCalculator"
@@ -158,7 +158,7 @@ TEST_F(TensorConverterCalculatorTest, RandomMatrixRowMajor) {
               }
             }
           }
-        )");
+        )pb");
     std::vector<Packet> output_packets;
     tool::AddVectorSink("tensor", &graph_config, &output_packets);
 
@@ -205,7 +205,7 @@ TEST_F(TensorConverterCalculatorTest, CustomDivAndSub) {
   CalculatorGraph graph;
   // Run the calculator and verify that one output is generated.
   CalculatorGraphConfig graph_config =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         input_stream: "input_image"
         node {
           calculator: "TensorConverterCalculator"
@@ -220,7 +220,7 @@ TEST_F(TensorConverterCalculatorTest, CustomDivAndSub) {
             }
           }
         }
-      )");
+      )pb");
   std::vector<Packet> output_packets;
   tool::AddVectorSink("tensor", &graph_config, &output_packets);
 
@@ -228,7 +228,7 @@ TEST_F(TensorConverterCalculatorTest, CustomDivAndSub) {
   MP_ASSERT_OK(graph.Initialize(graph_config));
   MP_ASSERT_OK(graph.StartRun({}));
   auto input_image = absl::make_unique<ImageFrame>(ImageFormat::GRAY8, 1, 1);
-  cv::Mat mat = ::mediapipe::formats::MatView(input_image.get());
+  cv::Mat mat = mediapipe::formats::MatView(input_image.get());
   mat.at<uint8>(0, 0) = 200;
   MP_ASSERT_OK(graph.AddPacketToInputStream(
       "input_image", Adopt(input_image.release()).At(Timestamp(0))));
@@ -259,7 +259,7 @@ TEST_F(TensorConverterCalculatorTest, SetOutputRange) {
   for (std::pair<float, float> range : range_values) {
     CalculatorGraph graph;
     CalculatorGraphConfig graph_config =
-        ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(
+        mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(
             absl::Substitute(R"(
         input_stream: "input_image"
         node {
@@ -285,7 +285,7 @@ TEST_F(TensorConverterCalculatorTest, SetOutputRange) {
     MP_ASSERT_OK(graph.Initialize(graph_config));
     MP_ASSERT_OK(graph.StartRun({}));
     auto input_image = absl::make_unique<ImageFrame>(ImageFormat::GRAY8, 1, 1);
-    cv::Mat mat = ::mediapipe::formats::MatView(input_image.get());
+    cv::Mat mat = mediapipe::formats::MatView(input_image.get());
     mat.at<uint8>(0, 0) = 200;
     MP_ASSERT_OK(graph.AddPacketToInputStream(
         "input_image", Adopt(input_image.release()).At(Timestamp(0))));

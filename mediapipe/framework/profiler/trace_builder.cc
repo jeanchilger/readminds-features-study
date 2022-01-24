@@ -85,7 +85,7 @@ void BasicTraceEventTypes(TraceEventRegistry* result) {
       {TraceEvent::PACKET_QUEUED, "An input queue size when a packet arrives.",
        true, true, false},
   };
-  for (TraceEventType t : basic_types) {
+  for (const TraceEventType& t : basic_types) {
     (*result)[t.event_type()] = t;
   }
 }
@@ -112,11 +112,13 @@ class StringIdMap {
     return string_id->second;
   }
   void clear() { pointer_id_map_.clear(), string_id_map_.clear(); }
-  const std::unordered_map<std::string, int32>& map() { return string_id_map_; }
+  const absl::node_hash_map<std::string, int32>& map() {
+    return string_id_map_;
+  }
 
  private:
   std::unordered_map<const std::string*, int32> pointer_id_map_;
-  std::unordered_map<std::string, int32> string_id_map_;
+  absl::node_hash_map<std::string, int32> string_id_map_;
   int32 next_id = 0;
 };
 

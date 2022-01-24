@@ -24,6 +24,7 @@
 
 #include "absl/base/macros.h"
 #include "absl/strings/str_split.h"
+#include "absl/strings/string_view.h"
 #include "mediapipe/framework/collection.h"
 #include "mediapipe/framework/packet.h"
 #include "mediapipe/framework/packet_set.h"
@@ -41,8 +42,10 @@ class PacketType {
  public:
   // Creates an uninitialized PacketType.
   PacketType();
-  PacketType(const PacketType&) = delete;
-  PacketType& operator=(const PacketType&) = delete;
+
+  // PacketType can be passed by value.
+  PacketType(const PacketType&) = default;
+  PacketType& operator=(const PacketType&) = default;
 
   // False for a PacketType that has not had any Set*() function called.
   bool IsInitialized() const;
@@ -82,10 +85,15 @@ class PacketType {
   // Returns true iff this and other are consistent, meaning they do
   // not expect different types.  IsAny() is consistent with anything.
   // IsNone() is only consistent with IsNone() and IsAny().
+  // Note: this is definied as a symmetric relationship, but within the
+  // framework, it is consistently invoked as:
+  //   input_port_type.IsConsistentWith(connected_output_port_type)
+  // TODO: consider making this explicitly directional, and
+  // sharing some logic with the packet validation check.
   bool IsConsistentWith(const PacketType& other) const;
 
   // Returns OK if the packet contains an object of the appropriate type.
-  ::mediapipe::Status Validate(const Packet& packet) const;
+  absl::Status Validate(const Packet& packet) const;
 
   // Returns a pointer to the Registered type name, or nullptr if the type
   // is not registered.  Do not use this for validation, use Validate()
@@ -98,7 +106,7 @@ class PacketType {
  private:
   // Typedef for the ValidateAsType() method in Packet that is used for
   // type validation and identification.
-  typedef ::mediapipe::Status (Packet::*ValidateMethodType)() const;
+  typedef absl::Status (Packet::*ValidateMethodType)() const;
 
   // Records whether the packet type was set in any way.
   bool initialized_;
@@ -126,7 +134,7 @@ class PacketTypeSetErrorHandler {
   // Returns a usable PacketType.  A different PacketType object is
   // returned for each different invalid location and the same object
   // is returned for multiple accesses to the same invalid location.
-  PacketType& GetFallback(const std::string& tag, int index) {
+  PacketType& GetFallback(const absl::string_view tag, int index) {
     if (!missing_) {
       missing_ = absl::make_unique<Missing>();
     }
@@ -136,7 +144,7 @@ class PacketTypeSetErrorHandler {
   }
 
   // In the const setting produce a FATAL error.
-  const PacketType& GetFallback(const std::string& tag, int index) const {
+  const PacketType& GetFallback(const absl::string_view tag, int index) const {
     LOG(FATAL) << "Failed to get tag \"" << tag << "\" index " << index
                << ".  Unable to defer error due to const specifier.";
     std::abort();
@@ -213,15 +221,15 @@ using PacketTypeSet =
 // Returns OK if the packets in the PacketSet are of the appropriate type.
 // packet_type_set must be valid before this is called (but packet_set
 // may be in any state).
-::mediapipe::Status ValidatePacketSet(const PacketTypeSet& packet_type_set,
-                                      const PacketSet& packet_set);
+absl::Status ValidatePacketSet(const PacketTypeSet& packet_type_set,
+                               const PacketSet& packet_set);
 
 // Validates that the PacketTypeSet was initialized properly.
 // An error is returned if
 // 1) Tag() or Index() is called with an invalid argument (however,
 //    a valid PacketType is still returned by the function).
 // 2) Any PacketType is not initialized.
-::mediapipe::Status ValidatePacketTypeSet(const PacketTypeSet& packet_type_set);
+absl::Status ValidatePacketTypeSet(const PacketTypeSet& packet_type_set);
 
 // Templated function definitions.
 

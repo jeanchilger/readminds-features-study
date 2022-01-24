@@ -14,6 +14,8 @@
 
 #include "mediapipe/calculators/tensor/image_to_tensor_converter_gl_buffer.h"
 
+#include "mediapipe/framework/port.h"
+
 #if MEDIAPIPE_OPENGL_ES_VERSION >= MEDIAPIPE_OPENGL_ES_31
 
 #include <array>
@@ -22,15 +24,16 @@
 
 #include "absl/strings/str_cat.h"
 #include "mediapipe/calculators/tensor/image_to_tensor_converter.h"
+#include "mediapipe/calculators/tensor/image_to_tensor_converter_gl_utils.h"
 #include "mediapipe/calculators/tensor/image_to_tensor_utils.h"
 #include "mediapipe/framework/calculator_framework.h"
+#include "mediapipe/framework/formats/image.h"
 #include "mediapipe/framework/formats/tensor.h"
 #include "mediapipe/framework/port/canonical_errors.h"
 #include "mediapipe/framework/port/ret_check.h"
 #include "mediapipe/framework/port/status.h"
 #include "mediapipe/framework/port/statusor.h"
 #include "mediapipe/gpu/gl_calculator_helper.h"
-#include "mediapipe/gpu/gpu_buffer.h"
 #include "tensorflow/lite/delegates/gpu/common/shape.h"
 #include "tensorflow/lite/delegates/gpu/common/types.h"
 #include "tensorflow/lite/delegates/gpu/gl/command_queue.h"
@@ -51,7 +54,7 @@ class SubRectExtractorGl {
  public:
   // Extracts a region defined by @sub_rect, removes A channel, transforms input
   // pixels as alpha * x + beta and resizes result into destination.
-  ::mediapipe::Status ExtractSubRectToBuffer(
+  absl::Status ExtractSubRectToBuffer(
       const tflite::gpu::gl::GlTexture& texture,
       const tflite::gpu::HW& texture_size, const RotatedRect& sub_rect,
       bool flip_horizontaly, float alpha, float beta,
@@ -59,64 +62,34 @@ class SubRectExtractorGl {
       tflite::gpu::gl::CommandQueue* command_queue,
       tflite::gpu::gl::GlBuffer* destination);
 
-  static ::mediapipe::StatusOr<SubRectExtractorGl> Create(
-      bool input_starts_at_bottom);
+  static absl::StatusOr<SubRectExtractorGl> Create(
+      const mediapipe::GlContext& gl_context, bool input_starts_at_bottom,
+      BorderMode border_mode);
 
  private:
   explicit SubRectExtractorGl(tflite::gpu::gl::GlProgram program,
-                              tflite::gpu::uint3 workgroup_size)
-      : program_(std::move(program)), workgroup_size_(workgroup_size) {}
+                              tflite::gpu::uint3 workgroup_size,
+                              bool use_custom_zero_border,
+                              BorderMode border_mode)
+      : program_(std::move(program)),
+        workgroup_size_(workgroup_size),
+        use_custom_zero_border_(use_custom_zero_border),
+        border_mode_(border_mode) {}
 
   tflite::gpu::gl::GlProgram program_;
   tflite::gpu::uint3 workgroup_size_;
+  bool use_custom_zero_border_ = false;
+  BorderMode border_mode_ = BorderMode::kReplicate;
 };
 
-::mediapipe::Status SetMat4x4(const tflite::gpu::gl::GlProgram& program,
-                              const std::string& name, float* data) {
+absl::Status SetMat4x4(const tflite::gpu::gl::GlProgram& program,
+                       const std::string& name, float* data) {
   GLint uniform_id;
   MP_RETURN_IF_ERROR(TFLITE_GPU_CALL_GL(glGetUniformLocation, &uniform_id,
                                         program.id(), name.c_str()));
   return TFLITE_GPU_CALL_GL(glProgramUniformMatrix4fv, program.id(), uniform_id,
                             1, GL_TRUE, data);
 }
-
-class GlParametersOverride {
- public:
-  static ::mediapipe::StatusOr<GlParametersOverride> Create(
-      const std::vector<std::pair<GLenum, GLint>>& overrides) {
-    std::vector<GLint> old_values(overrides.size());
-    for (int i = 0; i < overrides.size(); ++i) {
-      MP_RETURN_IF_ERROR(TFLITE_GPU_CALL_GL(glGetTexParameteriv, GL_TEXTURE_2D,
-                                            overrides[i].first,
-                                            &old_values[i]));
-      if (overrides[i].second != old_values[i]) {
-        MP_RETURN_IF_ERROR(TFLITE_GPU_CALL_GL(glTexParameteri, GL_TEXTURE_2D,
-                                              overrides[i].first,
-                                              overrides[i].second));
-      }
-    }
-    return GlParametersOverride(overrides, std::move(old_values));
-  }
-
-  ::mediapipe::Status Revert() {
-    for (int i = 0; i < overrides_.size(); ++i) {
-      if (overrides_[i].second != old_values_[i]) {
-        MP_RETURN_IF_ERROR(TFLITE_GPU_CALL_GL(glTexParameteri, GL_TEXTURE_2D,
-                                              overrides_[i].first,
-                                              old_values_[i]));
-      }
-    }
-    return ::mediapipe::OkStatus();
-  }
-
- private:
-  GlParametersOverride(const std::vector<std::pair<GLenum, GLint>>& overrides,
-                       std::vector<GLint> old_values)
-      : overrides_(overrides), old_values_(std::move(old_values)) {}
-
-  std::vector<std::pair<GLenum, GLint>> overrides_;
-  std::vector<GLint> old_values_;
-};
 
 constexpr char kShaderCode[] = R"(
 layout(std430) buffer;
@@ -162,6 +135,12 @@ void main() {
 #endif  // INPUT_STARTS_AT_BOTTOM
     vec4 src_value = alpha * texture(input_data, tc.xy) + beta;
 
+#ifdef CUSTOM_ZERO_BORDER_MODE
+    float out_of_bounds =
+      float(tc.x < 0.0 || tc.x > 1.0 || tc.y < 0.0 || tc.y > 1.0);
+    src_value = mix(src_value, vec4(0.0, 0.0, 0.0, 0.0), out_of_bounds);
+#endif
+
     int linear_index = gid.y * out_width + gid.x;
 
     // output_data.elements is populated as though it contains vec3 elements.
@@ -172,7 +151,7 @@ void main() {
 }
 )";
 
-::mediapipe::Status SubRectExtractorGl::ExtractSubRectToBuffer(
+absl::Status SubRectExtractorGl::ExtractSubRectToBuffer(
     const tflite::gpu::gl::GlTexture& texture,
     const tflite::gpu::HW& texture_size, const RotatedRect& texture_sub_rect,
     bool flip_horizontaly, float alpha, float beta,
@@ -185,11 +164,27 @@ void main() {
                                          &transform_mat);
   MP_RETURN_IF_ERROR(texture.BindAsSampler2D(0));
 
-  ASSIGN_OR_RETURN(auto overrides, GlParametersOverride::Create(
-                                       {{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
-                                        {GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
-                                        {GL_TEXTURE_MIN_FILTER, GL_LINEAR},
-                                        {GL_TEXTURE_MAG_FILTER, GL_LINEAR}}));
+  // a) Filtering.
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  // b) Clamping.
+  switch (border_mode_) {
+    case BorderMode::kReplicate: {
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+      break;
+    }
+    case BorderMode::kZero: {
+      if (!use_custom_zero_border_) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR,
+                         std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}.data());
+      }
+      break;
+    }
+  }
 
   MP_RETURN_IF_ERROR(destination->BindToIndex(0));
   MP_RETURN_IF_ERROR(program_.SetParameter({"input_data", 0}));
@@ -204,11 +199,21 @@ void main() {
       workgroup_size_);
   MP_RETURN_IF_ERROR(command_queue->Dispatch(program_, num_workgroups));
 
-  return overrides.Revert();
+  // Resetting to MediaPipe texture param defaults.
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+  return absl::OkStatus();
 }
 
-::mediapipe::StatusOr<SubRectExtractorGl> SubRectExtractorGl::Create(
-    bool input_starts_at_bottom) {
+absl::StatusOr<SubRectExtractorGl> SubRectExtractorGl::Create(
+    const mediapipe::GlContext& gl_context, bool input_starts_at_bottom,
+    BorderMode border_mode) {
+  bool use_custom_zero_border = border_mode == BorderMode::kZero &&
+                                !IsGlClampToBorderSupported(gl_context);
+
   const tflite::gpu::uint3 workgroup_size = {8, 8, 1};
   std::string starts_at_bottom_def;
   if (input_starts_at_bottom) {
@@ -216,9 +221,15 @@ void main() {
       #define INPUT_STARTS_AT_BOTTOM;
     )";
   }
-  const std::string full_shader_source =
-      absl::StrCat(tflite::gpu::gl::GetShaderHeader(workgroup_size),
-                   starts_at_bottom_def, kShaderCode);
+  std::string custom_zero_border_mode_def;
+  if (use_custom_zero_border) {
+    custom_zero_border_mode_def = R"(
+      #define CUSTOM_ZERO_BORDER_MODE
+    )";
+  }
+  const std::string full_shader_source = absl::StrCat(
+      tflite::gpu::gl::GetShaderHeader(workgroup_size), starts_at_bottom_def,
+      custom_zero_border_mode_def, kShaderCode);
 
   tflite::gpu::gl::GlShader shader;
   MP_RETURN_IF_ERROR(tflite::gpu::gl::GlShader::CompileShader(
@@ -227,40 +238,36 @@ void main() {
   MP_RETURN_IF_ERROR(
       tflite::gpu::gl::GlProgram::CreateWithShader(shader, &program));
 
-  return SubRectExtractorGl(std::move(program), workgroup_size);
+  return SubRectExtractorGl(std::move(program), workgroup_size,
+                            use_custom_zero_border, border_mode);
 }
 
 class GlProcessor : public ImageToTensorConverter {
  public:
-  ::mediapipe::Status Init(CalculatorContext* cc, bool input_starts_at_bottom) {
+  absl::Status Init(CalculatorContext* cc, bool input_starts_at_bottom,
+                    BorderMode border_mode) {
     MP_RETURN_IF_ERROR(gl_helper_.Open(cc));
-    return gl_helper_.RunInGlContext(
-        [this, input_starts_at_bottom]() -> ::mediapipe::Status {
-          tflite::gpu::GpuInfo gpu_info;
-          MP_RETURN_IF_ERROR(tflite::gpu::gl::RequestGpuInfo(&gpu_info));
-          RET_CHECK(tflite::gpu::IsOpenGl31OrAbove(gpu_info))
-              << "OpenGL ES 3.1 is required.";
-          command_queue_ = tflite::gpu::gl::NewCommandQueue(gpu_info);
+    return gl_helper_.RunInGlContext([this, input_starts_at_bottom,
+                                      border_mode]() -> absl::Status {
+      tflite::gpu::GpuInfo gpu_info;
+      MP_RETURN_IF_ERROR(tflite::gpu::gl::RequestGpuInfo(&gpu_info));
+      RET_CHECK(gpu_info.IsApiOpenGl31OrAbove())
+          << "OpenGL ES 3.1 is required.";
+      command_queue_ = tflite::gpu::gl::NewCommandQueue(gpu_info);
 
-          ASSIGN_OR_RETURN(auto extractor,
-                           SubRectExtractorGl::Create(input_starts_at_bottom));
-          extractor_ =
-              absl::make_unique<SubRectExtractorGl>(std::move(extractor));
-          return ::mediapipe::OkStatus();
-        });
+      ASSIGN_OR_RETURN(
+          auto extractor,
+          SubRectExtractorGl::Create(gl_helper_.GetGlContext(),
+                                     input_starts_at_bottom, border_mode));
+      extractor_ = absl::make_unique<SubRectExtractorGl>(std::move(extractor));
+      return absl::OkStatus();
+    });
   }
 
-  Size GetImageSize(const Packet& image_packet) override {
-    const auto& image = image_packet.Get<mediapipe::GpuBuffer>();
-    return {image.width(), image.height()};
-  }
-
-  ::mediapipe::StatusOr<Tensor> Convert(const Packet& image_packet,
-                                        const RotatedRect& roi,
-                                        const Size& output_dims,
-                                        float range_min,
-                                        float range_max) override {
-    const auto& input = image_packet.Get<mediapipe::GpuBuffer>();
+  absl::StatusOr<Tensor> Convert(const mediapipe::Image& input,
+                                 const RotatedRect& roi,
+                                 const Size& output_dims, float range_min,
+                                 float range_max) override {
     if (input.format() != mediapipe::GpuBufferFormat::kBGRA32) {
       return InvalidArgumentError(
           absl::StrCat("Only BGRA/RGBA textures are supported, passed format: ",
@@ -271,40 +278,39 @@ class GlProcessor : public ImageToTensorConverter {
     Tensor tensor(Tensor::ElementType::kFloat32,
                   {1, output_dims.height, output_dims.width, kNumChannels});
 
-    MP_RETURN_IF_ERROR(gl_helper_.RunInGlContext(
-        [this, &tensor, &input, &roi, &output_dims, range_min,
-         range_max]() -> ::mediapipe::Status {
-          constexpr int kRgbaNumChannels = 4;
-          auto source_texture = gl_helper_.CreateSourceTexture(input);
-          tflite::gpu::gl::GlTexture input_texture(
-              GL_TEXTURE_2D, source_texture.name(), GL_RGBA,
-              source_texture.width() * source_texture.height() *
-                  kRgbaNumChannels * sizeof(uint8_t),
-              /*layer=*/0,
-              /*owned=*/false);
+    MP_RETURN_IF_ERROR(gl_helper_.RunInGlContext([this, &tensor, &input, &roi,
+                                                  &output_dims, range_min,
+                                                  range_max]() -> absl::Status {
+      constexpr int kRgbaNumChannels = 4;
+      auto source_texture = gl_helper_.CreateSourceTexture(input);
+      tflite::gpu::gl::GlTexture input_texture(
+          GL_TEXTURE_2D, source_texture.name(), GL_RGBA,
+          source_texture.width() * source_texture.height() * kRgbaNumChannels *
+              sizeof(uint8_t),
+          /*layer=*/0,
+          /*owned=*/false);
 
-          constexpr float kInputImageRangeMin = 0.0f;
-          constexpr float kInputImageRangeMax = 1.0f;
-          ASSIGN_OR_RETURN(auto transform,
-                           GetValueRangeTransformation(kInputImageRangeMin,
-                                                       kInputImageRangeMax,
-                                                       range_min, range_max));
+      constexpr float kInputImageRangeMin = 0.0f;
+      constexpr float kInputImageRangeMax = 1.0f;
+      ASSIGN_OR_RETURN(
+          auto transform,
+          GetValueRangeTransformation(kInputImageRangeMin, kInputImageRangeMax,
+                                      range_min, range_max));
 
-          auto buffer_view = tensor.GetOpenGlBufferWriteView();
-          tflite::gpu::gl::GlBuffer output(GL_SHADER_STORAGE_BUFFER,
-                                           buffer_view.name(), tensor.bytes(),
-                                           /*offset=*/0,
-                                           /*has_ownership=*/false);
-          MP_RETURN_IF_ERROR(extractor_->ExtractSubRectToBuffer(
-              input_texture,
-              tflite::gpu::HW(source_texture.height(), source_texture.width()),
-              roi,
-              /*flip_horizontaly=*/false, transform.scale, transform.offset,
-              tflite::gpu::HW(output_dims.height, output_dims.width),
-              command_queue_.get(), &output));
+      auto buffer_view = tensor.GetOpenGlBufferWriteView();
+      tflite::gpu::gl::GlBuffer output(GL_SHADER_STORAGE_BUFFER,
+                                       buffer_view.name(), tensor.bytes(),
+                                       /*offset=*/0,
+                                       /*has_ownership=*/false);
+      MP_RETURN_IF_ERROR(extractor_->ExtractSubRectToBuffer(
+          input_texture,
+          tflite::gpu::HW(source_texture.height(), source_texture.width()), roi,
+          /*flip_horizontaly=*/false, transform.scale, transform.offset,
+          tflite::gpu::HW(output_dims.height, output_dims.width),
+          command_queue_.get(), &output));
 
-          return ::mediapipe::OkStatus();
-        }));
+      return absl::OkStatus();
+    }));
 
     return tensor;
   }
@@ -325,14 +331,14 @@ class GlProcessor : public ImageToTensorConverter {
 
 }  // namespace
 
-::mediapipe::StatusOr<std::unique_ptr<ImageToTensorConverter>>
+absl::StatusOr<std::unique_ptr<ImageToTensorConverter>>
 CreateImageToGlBufferTensorConverter(CalculatorContext* cc,
-                                     bool input_starts_at_bottom) {
+                                     bool input_starts_at_bottom,
+                                     BorderMode border_mode) {
   auto result = absl::make_unique<GlProcessor>();
-  MP_RETURN_IF_ERROR(result->Init(cc, input_starts_at_bottom));
+  MP_RETURN_IF_ERROR(result->Init(cc, input_starts_at_bottom, border_mode));
 
-  // Simply "return std::move(result)" failed to build on macOS with bazel.
-  return std::unique_ptr<ImageToTensorConverter>(std::move(result));
+  return result;
 }
 
 }  // namespace mediapipe

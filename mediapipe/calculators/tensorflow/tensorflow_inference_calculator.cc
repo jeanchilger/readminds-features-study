@@ -49,6 +49,11 @@ namespace tf = ::tensorflow;
 namespace mediapipe {
 
 namespace {
+
+constexpr char kRecurrentInitTensorsTag[] = "RECURRENT_INIT_TENSORS";
+constexpr char kSessionTag[] = "SESSION";
+constexpr char kSessionBundleTag[] = "SESSION_BUNDLE";
+
 // This is a simple implementation of a semaphore using standard C++ libraries.
 // It is supposed to be used only by TensorflowInferenceCalculator to throttle
 // the concurrent calls of Tensorflow Session::Run. This is useful when multiple
@@ -98,14 +103,11 @@ class InferenceState {
 
 // This calculator performs inference on a trained TensorFlow model.
 //
-// Additional documentation and examples at
-// go/mediapipe/tensorflow_in_mediapipe.
-//
 // TensorFlow Sessions can be created from checkpoint paths, frozen models, or
-// the SavedModel system (go/saved-model). See the TensorFlowSessionFrom*
-// packet generators for details. Each of these methods defines a mapping
-// between MediaPipe streams and TensorFlow tensors. All of this information is
-// passed in as an input_side_packet.
+// the SavedModel system. See the TensorFlowSessionFrom* packet generators for
+// details. Each of these methods defines a mapping between MediaPipe streams
+// and TensorFlow tensors. All of this information is passed in as an
+// input_side_packet.
 //
 // The input and output streams are TensorFlow tensors labeled by tags. The tags
 // for the streams are matched to feeds and fetchs in a TensorFlow session using
@@ -234,7 +236,7 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
         mediapipe::MonotonicClock::CreateSynchronizedMonotonicClock());
   }
 
-  static ::mediapipe::Status GetContract(CalculatorContract* cc) {
+  static absl::Status GetContract(CalculatorContract* cc) {
     const auto& options = cc->Options<TensorFlowInferenceCalculatorOptions>();
     RET_CHECK(!cc->Inputs().GetTags().empty());
     for (const std::string& tag : cc->Inputs().GetTags()) {
@@ -255,24 +257,24 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
     }
     // A mediapipe::TensorFlowSession with a model loaded and ready for use.
     // For this calculator it must include a tag_to_tensor_map.
-    cc->InputSidePackets().Tag("SESSION").Set<TensorFlowSession>();
-    if (cc->InputSidePackets().HasTag("RECURRENT_INIT_TENSORS")) {
+    cc->InputSidePackets().Tag(kSessionTag).Set<TensorFlowSession>();
+    if (cc->InputSidePackets().HasTag(kRecurrentInitTensorsTag)) {
       cc->InputSidePackets()
-          .Tag("RECURRENT_INIT_TENSORS")
+          .Tag(kRecurrentInitTensorsTag)
           .Set<std::unique_ptr<std::map<std::string, tf::Tensor>>>();
     }
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
   std::unique_ptr<InferenceState> CreateInferenceState(CalculatorContext* cc)
       ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
     std::unique_ptr<InferenceState> inference_state =
         absl::make_unique<InferenceState>();
-    if (cc->InputSidePackets().HasTag("RECURRENT_INIT_TENSORS") &&
-        !cc->InputSidePackets().Tag("RECURRENT_INIT_TENSORS").IsEmpty()) {
+    if (cc->InputSidePackets().HasTag(kRecurrentInitTensorsTag) &&
+        !cc->InputSidePackets().Tag(kRecurrentInitTensorsTag).IsEmpty()) {
       std::map<std::string, tf::Tensor>* init_tensor_map;
       init_tensor_map = GetFromUniquePtr<std::map<std::string, tf::Tensor>>(
-          cc->InputSidePackets().Tag("RECURRENT_INIT_TENSORS"));
+          cc->InputSidePackets().Tag(kRecurrentInitTensorsTag));
       for (const auto& p : *init_tensor_map) {
         inference_state->input_tensor_batches_[p.first].emplace_back(p.second);
       }
@@ -280,16 +282,16 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
     return inference_state;
   }
 
-  ::mediapipe::Status Open(CalculatorContext* cc) override {
+  absl::Status Open(CalculatorContext* cc) override {
     options_ = cc->Options<TensorFlowInferenceCalculatorOptions>();
 
-    RET_CHECK(cc->InputSidePackets().HasTag("SESSION"));
+    RET_CHECK(cc->InputSidePackets().HasTag(kSessionTag));
     session_ = cc->InputSidePackets()
-                   .Tag("SESSION")
+                   .Tag(kSessionTag)
                    .Get<TensorFlowSession>()
                    .session.get();
     tag_to_tensor_map_ = cc->InputSidePackets()
-                             .Tag("SESSION")
+                             .Tag(kSessionTag)
                              .Get<TensorFlowSession>()
                              .tag_to_tensor_map;
 
@@ -304,10 +306,10 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
           << "recurrent_tag_pair must be a colon "
              "separated std::string with two components: "
           << tag_pair;
-      RET_CHECK(::mediapipe::ContainsKey(tag_to_tensor_map_, tags[0]))
+      RET_CHECK(mediapipe::ContainsKey(tag_to_tensor_map_, tags[0]))
           << "Can't find tag '" << tags[0] << "' in signature "
           << options_.signature_name();
-      RET_CHECK(::mediapipe::ContainsKey(tag_to_tensor_map_, tags[1]))
+      RET_CHECK(mediapipe::ContainsKey(tag_to_tensor_map_, tags[1]))
           << "Can't find tag '" << tags[1] << "' in signature "
           << options_.signature_name();
       recurrent_feed_tags_.insert(tags[0]);
@@ -316,12 +318,12 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
 
     // Check that all tags are present in this signature bound to tensors.
     for (const std::string& tag : cc->Inputs().GetTags()) {
-      RET_CHECK(::mediapipe::ContainsKey(tag_to_tensor_map_, tag))
+      RET_CHECK(mediapipe::ContainsKey(tag_to_tensor_map_, tag))
           << "Can't find tag '" << tag << "' in signature "
           << options_.signature_name();
     }
     for (const std::string& tag : cc->Outputs().GetTags()) {
-      RET_CHECK(::mediapipe::ContainsKey(tag_to_tensor_map_, tag))
+      RET_CHECK(mediapipe::ContainsKey(tag_to_tensor_map_, tag))
           << "Can't find tag '" << tag << "' in signature "
           << options_.signature_name();
     }
@@ -335,12 +337,12 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
       cc->SetOffset(0);
     }
 
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
   // Adds a batch dimension to the input tensor if specified in the calculator
   // options.
-  ::mediapipe::Status AddBatchDimension(tf::Tensor* input_tensor) {
+  absl::Status AddBatchDimension(tf::Tensor* input_tensor) {
     if (options_.add_batch_dim_to_tensors()) {
       tf::TensorShape new_shape(input_tensor->shape());
       new_shape.InsertDim(0, 1);
@@ -348,17 +350,17 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
           << "Could not add 0th dimension to tensor without changing its shape."
           << " Current shape: " << input_tensor->shape().DebugString();
     }
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
-  ::mediapipe::Status AggregateTensorPacket(
+  absl::Status AggregateTensorPacket(
       const std::string& tag_name, const Packet& packet,
       std::map<Timestamp, std::map<std::string, tf::Tensor>>*
           input_tensors_by_tag_by_timestamp,
       InferenceState* inference_state) ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
     tf::Tensor input_tensor(packet.Get<tf::Tensor>());
     RET_CHECK_OK(AddBatchDimension(&input_tensor));
-    if (::mediapipe::ContainsKey(recurrent_feed_tags_, tag_name)) {
+    if (mediapipe::ContainsKey(recurrent_feed_tags_, tag_name)) {
       // If we receive an input on a recurrent tag, override the state.
       // It's OK to override the global state because there is just one
       // input stream allowed for recurrent tensors.
@@ -366,12 +368,12 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
     }
     (*input_tensors_by_tag_by_timestamp)[packet.Timestamp()].insert(
         std::make_pair(tag_name, input_tensor));
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
   // Removes the batch dimension of the output tensor if specified in the
   // calculator options.
-  ::mediapipe::Status RemoveBatchDimension(tf::Tensor* output_tensor) {
+  absl::Status RemoveBatchDimension(tf::Tensor* output_tensor) {
     if (options_.add_batch_dim_to_tensors()) {
       tf::TensorShape new_shape(output_tensor->shape());
       new_shape.RemoveDim(0);
@@ -380,10 +382,10 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
           << "shape. Current shape: " << output_tensor->shape().DebugString()
           << " (The expected first dimension is 1 for a batch element.)";
     }
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
-  ::mediapipe::Status Process(CalculatorContext* cc) override {
+  absl::Status Process(CalculatorContext* cc) override {
     std::unique_ptr<InferenceState> inference_state_to_process;
     {
       absl::WriterMutexLock l(&mutex_);
@@ -395,12 +397,11 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
       for (const std::string& tag_as_node_name : cc->Inputs().GetTags()) {
         if (cc->Inputs().Tag(tag_as_node_name).IsEmpty()) {
           // Recurrent tensors can be empty.
-          if (!::mediapipe::ContainsKey(recurrent_feed_tags_,
-                                        tag_as_node_name)) {
+          if (!mediapipe::ContainsKey(recurrent_feed_tags_, tag_as_node_name)) {
             if (options_.skip_on_missing_features()) {
-              return ::mediapipe::OkStatus();
+              return absl::OkStatus();
             } else {
-              return ::mediapipe::InvalidArgumentError(absl::StrCat(
+              return absl::InvalidArgumentError(absl::StrCat(
                   "Tag ", tag_as_node_name,
                   " not present at timestamp: ", cc->InputTimestamp().Value()));
             }
@@ -409,7 +410,7 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
           const auto& tensor_packets =
               cc->Inputs().Tag(tag_as_node_name).Get<std::vector<Packet>>();
           if (tensor_packets.size() > options_.batch_size()) {
-            return ::mediapipe::InvalidArgumentError(absl::StrCat(
+            return absl::InvalidArgumentError(absl::StrCat(
                 "Batch for tag ", tag_as_node_name,
                 " has more packets than batch capacity. batch_size: ",
                 options_.batch_size(), " packets: ", tensor_packets.size()));
@@ -447,10 +448,10 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
           OutputBatch(cc, std::move(inference_state_to_process)));
     }
 
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
-  ::mediapipe::Status Close(CalculatorContext* cc) override {
+  absl::Status Close(CalculatorContext* cc) override {
     std::unique_ptr<InferenceState> inference_state_to_process = nullptr;
     {
       absl::WriterMutexLock l(&mutex_);
@@ -464,7 +465,7 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
       MP_RETURN_IF_ERROR(
           OutputBatch(cc, std::move(inference_state_to_process)));
     }
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
   // When a batch of input tensors is ready to be run, runs TensorFlow and
@@ -475,8 +476,8 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
   // memory buffer. Therefore, copies are cheap and should not cause the memory
   // buffer to fall out of scope. In contrast, concat is only used where
   // necessary.
-  ::mediapipe::Status OutputBatch(
-      CalculatorContext* cc, std::unique_ptr<InferenceState> inference_state) {
+  absl::Status OutputBatch(CalculatorContext* cc,
+                           std::unique_ptr<InferenceState> inference_state) {
     const int64 start_time = absl::ToUnixMicros(clock_->TimeNow());
     std::vector<std::pair<mediapipe::ProtoString, tf::Tensor>> input_tensors;
 
@@ -488,13 +489,13 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
                                      keyed_tensors.second[0]);
         } else {
           // The input buffer can be empty for recurrent tensors.
-          RET_CHECK(::mediapipe::ContainsKey(recurrent_feed_tags_,
-                                             keyed_tensors.first))
+          RET_CHECK(
+              mediapipe::ContainsKey(recurrent_feed_tags_, keyed_tensors.first))
               << "A non-recurrent tensor does not have an input: "
               << keyed_tensors.first;
         }
       } else {
-        // Pad by replicating the first tens  or, then ignore the values.
+        // Pad by replicating the first tensor, then ignore the values.
         keyed_tensors.second.resize(options_.batch_size());
         std::fill(keyed_tensors.second.begin() +
                       inference_state->batch_timestamps_.size(),
@@ -606,7 +607,7 @@ class TensorFlowInferenceCalculator : public CalculatorBase {
       inference_state_->batch_timestamps_.clear();
     }
 
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
  private:

@@ -18,7 +18,8 @@
 #include "absl/strings/str_cat.h"
 #include "mediapipe/framework/calculator.pb.h"
 #include "mediapipe/framework/calculator_framework.h"
-#include "mediapipe/framework/deps/message_matchers.h"
+#include "mediapipe/framework/graph_service_manager.h"
+#include "mediapipe/framework/packet.h"
 #include "mediapipe/framework/packet_set.h"
 #include "mediapipe/framework/packet_type.h"
 #include "mediapipe/framework/port/gmock.h"
@@ -38,10 +39,10 @@ namespace {
 
 class SimpleTestCalculator : public CalculatorBase {
  public:
-  ::mediapipe::Status Process(CalculatorContext* cc) override {
-    return ::mediapipe::OkStatus();
+  absl::Status Process(CalculatorContext* cc) override {
+    return absl::OkStatus();
   }
-  static ::mediapipe::Status GetContract(CalculatorContract* cc) {
+  static absl::Status GetContract(CalculatorContract* cc) {
     for (PacketType& type : cc->Inputs()) {
       type.Set<int>();
     }
@@ -51,7 +52,7 @@ class SimpleTestCalculator : public CalculatorBase {
     for (PacketType& type : cc->InputSidePackets()) {
       type.Set<int>();
     }
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 };
 REGISTER_CALCULATOR(SimpleTestCalculator);
@@ -66,10 +67,10 @@ REGISTER_CALCULATOR(SomeAggregator);
 
 class TestSubgraph : public Subgraph {
  public:
-  ::mediapipe::StatusOr<CalculatorGraphConfig> GetConfig(
+  absl::StatusOr<CalculatorGraphConfig> GetConfig(
       const SubgraphOptions& /*options*/) override {
     CalculatorGraphConfig config =
-        ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+        mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
           input_stream: "DATA:input_1"
           node {
             name: "regular_node"
@@ -87,7 +88,7 @@ class TestSubgraph : public Subgraph {
             packet_generator: "SomePacketGenerator"
             output_side_packet: "side"
           }
-        )");
+        )pb");
     return config;
   }
 };
@@ -95,10 +96,10 @@ REGISTER_MEDIAPIPE_GRAPH(TestSubgraph);
 
 class PacketFactoryTestSubgraph : public Subgraph {
  public:
-  ::mediapipe::StatusOr<CalculatorGraphConfig> GetConfig(
+  absl::StatusOr<CalculatorGraphConfig> GetConfig(
       const SubgraphOptions& /*options*/) override {
     CalculatorGraphConfig config =
-        ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+        mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
           input_stream: "DATA:input_1"
           node {
             name: "regular_node"
@@ -116,7 +117,7 @@ class PacketFactoryTestSubgraph : public Subgraph {
             packet_factory: "SomePacketFactory"
             output_side_packet: "side"
           }
-        )");
+        )pb");
     return config;
   }
 };
@@ -126,7 +127,7 @@ REGISTER_MEDIAPIPE_GRAPH(PacketFactoryTestSubgraph);
 // and the number of copies of the node are specified in subgraph options.
 class NodeChainSubgraph : public Subgraph {
  public:
-  ::mediapipe::StatusOr<CalculatorGraphConfig> GetConfig(
+  absl::StatusOr<CalculatorGraphConfig> GetConfig(
       const SubgraphOptions& options) override {
     auto opts =
         Subgraph::GetOptions<mediapipe::NodeChainSubgraphOptions>(options);
@@ -152,10 +153,10 @@ REGISTER_MEDIAPIPE_GRAPH(NodeChainSubgraph);
 // subgraph contains a node with the executor field "custom_thread_pool".
 class NodeWithExecutorSubgraph : public Subgraph {
  public:
-  ::mediapipe::StatusOr<CalculatorGraphConfig> GetConfig(
+  absl::StatusOr<CalculatorGraphConfig> GetConfig(
       const SubgraphOptions& options) override {
     CalculatorGraphConfig config =
-        ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+        mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
           input_stream: "INPUT:foo"
           output_stream: "OUTPUT:bar"
           node {
@@ -164,7 +165,7 @@ class NodeWithExecutorSubgraph : public Subgraph {
             output_stream: "bar"
             executor: "custom_thread_pool"
           }
-        )");
+        )pb");
     return config;
   }
 };
@@ -174,10 +175,10 @@ REGISTER_MEDIAPIPE_GRAPH(NodeWithExecutorSubgraph);
 // subgraph contains a NodeWithExecutorSubgraph.
 class EnclosingSubgraph : public Subgraph {
  public:
-  ::mediapipe::StatusOr<CalculatorGraphConfig> GetConfig(
+  absl::StatusOr<CalculatorGraphConfig> GetConfig(
       const SubgraphOptions& options) override {
     CalculatorGraphConfig config =
-        ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+        mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
           input_stream: "IN:in"
           output_stream: "OUT:out"
           node {
@@ -185,7 +186,7 @@ class EnclosingSubgraph : public Subgraph {
             input_stream: "INPUT:in"
             output_stream: "OUTPUT:out"
           }
-        )");
+        )pb");
     return config;
   }
 };
@@ -193,7 +194,7 @@ REGISTER_MEDIAPIPE_GRAPH(EnclosingSubgraph);
 
 TEST(SubgraphExpansionTest, TransformStreamNames) {
   CalculatorGraphConfig config =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         node {
           calculator: "SomeSinkCalculator"
           input_stream: "input_1"
@@ -201,9 +202,9 @@ TEST(SubgraphExpansionTest, TransformStreamNames) {
           input_stream: "AUDIO:0:input_3"
           input_stream: "AUDIO:1:input_4"
         }
-      )");
+      )pb");
   CalculatorGraphConfig expected_config =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         node {
           calculator: "SomeSinkCalculator"
           input_stream: "input_1_foo"
@@ -211,7 +212,7 @@ TEST(SubgraphExpansionTest, TransformStreamNames) {
           input_stream: "AUDIO:0:input_3_foo"
           input_stream: "AUDIO:1:input_4_foo"
         }
-      )");
+      )pb");
   auto add_foo = [](absl::string_view s) { return absl::StrCat(s, "_foo"); };
   MP_EXPECT_OK(tool::TransformStreamNames(
       (*config.mutable_node())[0].mutable_input_stream(), add_foo));
@@ -220,7 +221,7 @@ TEST(SubgraphExpansionTest, TransformStreamNames) {
 
 TEST(SubgraphExpansionTest, TransformNames) {
   CalculatorGraphConfig config =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         input_stream: "input_1"
         node {
           calculator: "SomeRegularCalculator"
@@ -236,9 +237,9 @@ TEST(SubgraphExpansionTest, TransformNames) {
           input_stream: "output_1"
           output_stream: "output_2"
         }
-      )");
+      )pb");
   CalculatorGraphConfig expected_config =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         input_stream: "__sg0_input_1"
         node {
           calculator: "SomeRegularCalculator"
@@ -255,7 +256,7 @@ TEST(SubgraphExpansionTest, TransformNames) {
           input_stream: "__sg0_output_1"
           output_stream: "__sg0_output_2"
         }
-      )");
+      )pb");
   auto add_prefix = [](absl::string_view s) {
     return absl::StrCat("__sg0_", s);
   };
@@ -265,14 +266,14 @@ TEST(SubgraphExpansionTest, TransformNames) {
 
 TEST(SubgraphExpansionTest, FindCorrespondingStreams) {
   CalculatorGraphConfig config1 =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         input_stream: "input_1"
         input_stream: "VIDEO:input_2"
         input_stream: "AUDIO:0:input_3"
         input_stream: "AUDIO:1:input_4"
-      )");
+      )pb");
   CalculatorGraphConfig config2 =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         node {
           calculator: "SomeSubgraph"
           input_stream: "foo"
@@ -280,7 +281,7 @@ TEST(SubgraphExpansionTest, FindCorrespondingStreams) {
           input_stream: "AUDIO:0:baz"
           input_stream: "AUDIO:1:qux"
         }
-      )");
+      )pb");
   std::map<std::string, std::string> stream_map;
   MP_EXPECT_OK(tool::FindCorrespondingStreams(
       &stream_map, config1.input_stream(), config2.node()[0].input_stream()));
@@ -294,13 +295,13 @@ TEST(SubgraphExpansionTest, FindCorrespondingStreams) {
 TEST(SubgraphExpansionTest, FindCorrespondingStreamsNonexistentTag) {
   // The VIDEO tag does not exist in the subgraph.
   CalculatorGraphConfig config1 =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         input_stream: "input_1"
         input_stream: "AUDIO:0:input_3"
         input_stream: "AUDIO:1:input_4"
-      )");
+      )pb");
   CalculatorGraphConfig config2 =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         node {
           calculator: "SomeSubgraph"
           input_stream: "foo"
@@ -308,7 +309,7 @@ TEST(SubgraphExpansionTest, FindCorrespondingStreamsNonexistentTag) {
           input_stream: "AUDIO:0:baz"
           input_stream: "AUDIO:1:qux"
         }
-      )");
+      )pb");
   std::map<std::string, std::string> stream_map;
   auto status = tool::FindCorrespondingStreams(
       &stream_map, config1.input_stream(), config2.node()[0].input_stream());
@@ -324,13 +325,13 @@ TEST(SubgraphExpansionTest, FindCorrespondingStreamsNonexistentTag) {
 TEST(SubgraphExpansionTest, FindCorrespondingStreamsTooFewIndexes) {
   // The AUDIO tag has too few indexes in the subgraph (1 vs. 2).
   CalculatorGraphConfig config1 =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         input_stream: "input_1"
         input_stream: "VIDEO:input_2"
         input_stream: "AUDIO:0:input_3"
-      )");
+      )pb");
   CalculatorGraphConfig config2 =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         node {
           calculator: "SomeSubgraph"
           input_stream: "foo"
@@ -338,7 +339,7 @@ TEST(SubgraphExpansionTest, FindCorrespondingStreamsTooFewIndexes) {
           input_stream: "AUDIO:0:baz"
           input_stream: "AUDIO:1:qux"
         }
-      )");
+      )pb");
   std::map<std::string, std::string> stream_map;
   auto status = tool::FindCorrespondingStreams(
       &stream_map, config1.input_stream(), config2.node()[0].input_stream());
@@ -353,7 +354,7 @@ TEST(SubgraphExpansionTest, FindCorrespondingStreamsTooFewIndexes) {
 
 TEST(SubgraphExpansionTest, ConnectSubgraphStreams) {
   CalculatorGraphConfig subgraph =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         input_stream: "A:input_1"
         input_stream: "B:input_2"
         output_stream: "O:output_2"
@@ -377,9 +378,9 @@ TEST(SubgraphExpansionTest, ConnectSubgraphStreams) {
           input_side_packet: "side_input"
           output_side_packet: "side_output"
         }
-      )");
+      )pb");
   CalculatorGraphConfig supergraph =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         node {
           calculator: "SomeSubgraph"
           input_stream: "A:foo"
@@ -388,11 +389,11 @@ TEST(SubgraphExpansionTest, ConnectSubgraphStreams) {
           input_side_packet: "SI:flip"
           output_side_packet: "SO:flop"
         }
-      )");
+      )pb");
   // Note: graph input streams, output streams, and side packets on the
   // subgraph are not changed because they are going to be discarded anyway.
   CalculatorGraphConfig expected_subgraph =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         input_stream: "A:input_1"
         input_stream: "B:input_2"
         output_stream: "O:output_2"
@@ -416,23 +417,23 @@ TEST(SubgraphExpansionTest, ConnectSubgraphStreams) {
           input_side_packet: "flip"
           output_side_packet: "flop"
         }
-      )");
+      )pb");
   MP_EXPECT_OK(tool::ConnectSubgraphStreams(supergraph.node()[0], &subgraph));
   EXPECT_THAT(subgraph, mediapipe::EqualsProto(expected_subgraph));
 }
 
 TEST(SubgraphExpansionTest, ExpandSubgraphs) {
   CalculatorGraphConfig supergraph =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         node {
           name: "simple_source"
           calculator: "SomeSourceCalculator"
           output_stream: "foo"
         }
         node { calculator: "TestSubgraph" input_stream: "DATA:foo" }
-      )");
+      )pb");
   CalculatorGraphConfig expected_graph =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         node {
           name: "simple_source"
           calculator: "SomeSourceCalculator"
@@ -454,14 +455,14 @@ TEST(SubgraphExpansionTest, ExpandSubgraphs) {
           packet_generator: "SomePacketGenerator"
           output_side_packet: "testsubgraph__side"
         }
-      )");
+      )pb");
   MP_EXPECT_OK(tool::ExpandSubgraphs(&supergraph));
   EXPECT_THAT(supergraph, mediapipe::EqualsProto(expected_graph));
 }
 
 TEST(SubgraphExpansionTest, ValidateSubgraphFields) {
   CalculatorGraphConfig supergraph =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         node {
           name: "simple_source"
           calculator: "SomeSourceCalculator"
@@ -473,13 +474,13 @@ TEST(SubgraphExpansionTest, ValidateSubgraphFields) {
           input_stream: "DATA:foo"
           buffer_size_hint: -1  # This field is only applicable to calculators.
         }
-      )");
-  ::mediapipe::Status s1 = tool::ValidateSubgraphFields(supergraph.node(1));
-  EXPECT_EQ(s1.code(), ::mediapipe::StatusCode::kInvalidArgument);
+      )pb");
+  absl::Status s1 = tool::ValidateSubgraphFields(supergraph.node(1));
+  EXPECT_EQ(s1.code(), absl::StatusCode::kInvalidArgument);
   EXPECT_THAT(s1.message(), testing::HasSubstr("foo_subgraph"));
 
-  ::mediapipe::Status s2 = tool::ExpandSubgraphs(&supergraph);
-  EXPECT_EQ(s2.code(), ::mediapipe::StatusCode::kInvalidArgument);
+  absl::Status s2 = tool::ExpandSubgraphs(&supergraph);
+  EXPECT_EQ(s2.code(), absl::StatusCode::kInvalidArgument);
   EXPECT_THAT(s2.message(), testing::HasSubstr("foo_subgraph"));
 }
 
@@ -489,7 +490,7 @@ TEST(SubgraphExpansionTest, ValidateSubgraphFields) {
 // subgraph executor support in the future.
 TEST(SubgraphExpansionTest, ExecutorFieldOfNodeInSubgraphPreserved) {
   CalculatorGraphConfig supergraph =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         input_stream: "input"
         executor {
           name: "custom_thread_pool"
@@ -503,9 +504,9 @@ TEST(SubgraphExpansionTest, ExecutorFieldOfNodeInSubgraphPreserved) {
           input_stream: "IN:input"
           output_stream: "OUT:output"
         }
-      )");
-  CalculatorGraphConfig expected_graph = ::mediapipe::ParseTextProtoOrDie<
-      CalculatorGraphConfig>(R"(
+      )pb");
+  CalculatorGraphConfig expected_graph = mediapipe::ParseTextProtoOrDie<
+      CalculatorGraphConfig>(R"pb(
     input_stream: "input"
     executor {
       name: "custom_thread_pool"
@@ -521,9 +522,225 @@ TEST(SubgraphExpansionTest, ExecutorFieldOfNodeInSubgraphPreserved) {
       output_stream: "output"
       executor: "custom_thread_pool"
     }
-  )");
+  )pb");
   MP_EXPECT_OK(tool::ExpandSubgraphs(&supergraph));
   EXPECT_THAT(supergraph, mediapipe::EqualsProto(expected_graph));
+}
+
+const mediapipe::GraphService<std::string> kStringTestService{
+    "mediapipe::StringTestService"};
+class GraphServicesClientTestSubgraph : public Subgraph {
+ public:
+  absl::StatusOr<CalculatorGraphConfig> GetConfig(
+      SubgraphContext* sc) override {
+    auto string_service = sc->Service(kStringTestService);
+    RET_CHECK(string_service.IsAvailable()) << "Service not available";
+    CalculatorGraphConfig config;
+    config.add_node()->set_calculator(string_service.GetObject());
+    return config;
+  }
+};
+REGISTER_MEDIAPIPE_GRAPH(GraphServicesClientTestSubgraph);
+
+TEST(SubgraphExpansionTest, GraphServicesUsage) {
+  CalculatorGraphConfig supergraph =
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
+        node { calculator: "GraphServicesClientTestSubgraph" }
+      )pb");
+
+  CalculatorGraphConfig expected_graph =
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
+        node {
+          name: "graphservicesclienttestsubgraph__ExpectedNode"
+          calculator: "ExpectedNode"
+        }
+      )pb");
+  GraphServiceManager service_manager;
+  MP_ASSERT_OK(service_manager.SetServiceObject(
+      kStringTestService, std::make_shared<std::string>("ExpectedNode")));
+  MP_EXPECT_OK(tool::ExpandSubgraphs(&supergraph, /*graph_registry=*/nullptr,
+                                     /*graph_options=*/nullptr,
+                                     &service_manager));
+  EXPECT_THAT(supergraph, mediapipe::EqualsProto(expected_graph));
+}
+
+// Shows SubgraphOptions consumed by GraphRegistry::CreateByName.
+TEST(SubgraphExpansionTest, SubgraphOptionsUsage) {
+  EXPECT_TRUE(SubgraphRegistry::IsRegistered("NodeChainSubgraph"));
+  GraphRegistry graph_registry;
+
+  // CalculatorGraph::Initialize passes the SubgraphOptions into:
+  // (1) GraphRegistry::CreateByName("NodeChainSubgraph", options)
+  // (2) tool::ExpandSubgraphs(&config, options)
+  auto graph_options =
+      mediapipe::ParseTextProtoOrDie<Subgraph::SubgraphOptions>(R"pb(
+        options {
+          [mediapipe.NodeChainSubgraphOptions.ext] {
+            node_type: "DoubleIntCalculator"
+            chain_length: 3
+          }
+        })pb");
+  SubgraphContext context(&graph_options, /*service_manager=*/nullptr);
+
+  // "NodeChainSubgraph" consumes graph_options only in CreateByName.
+  auto subgraph_status =
+      graph_registry.CreateByName("", "NodeChainSubgraph", &context);
+  MP_ASSERT_OK(subgraph_status);
+  auto subgraph = std::move(subgraph_status).value();
+  MP_ASSERT_OK(
+      tool::ExpandSubgraphs(&subgraph, &graph_registry, &graph_options));
+
+  CalculatorGraphConfig expected_graph =
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
+        node {
+          calculator: "DoubleIntCalculator"
+          input_stream: "stream_0"
+          output_stream: "stream_1"
+        }
+        node {
+          calculator: "DoubleIntCalculator"
+          input_stream: "stream_1"
+          output_stream: "stream_2"
+        }
+        node {
+          calculator: "DoubleIntCalculator"
+          input_stream: "stream_2"
+          output_stream: "stream_3"
+        }
+        input_stream: "INPUT:stream_0"
+        output_stream: "OUTPUT:stream_3"
+      )pb");
+
+  EXPECT_THAT(subgraph, mediapipe::EqualsProto(expected_graph));
+}
+
+// Shows SubgraphOptions consumed by tool::ExpandSubgraphs.
+TEST(SubgraphExpansionTest, SimpleSubgraphOptionsUsage) {
+  EXPECT_TRUE(SubgraphRegistry::IsRegistered("NodeChainSubgraph"));
+  GraphRegistry graph_registry;
+  auto moon_options =
+      mediapipe::ParseTextProtoOrDie<Subgraph::SubgraphOptions>(R"pb(
+        options {
+          [mediapipe.NodeChainSubgraphOptions.ext] {
+            node_type: "DoubleIntCalculator"
+            chain_length: 3
+          }
+        })pb");
+  auto moon_subgraph =
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
+        type: "MoonSubgraph"
+        graph_options: {
+          [type.googleapis.com/mediapipe.NodeChainSubgraphOptions] {}
+        }
+        node: {
+          calculator: "MoonCalculator"
+          node_options: {
+            [type.googleapis.com/mediapipe.NodeChainSubgraphOptions] {}
+          }
+          option_value: "chain_length:options/chain_length"
+        }
+      )pb");
+
+  // The moon_options are copied into the graph_options of moon_subgraph.
+  MP_ASSERT_OK(
+      tool::ExpandSubgraphs(&moon_subgraph, &graph_registry, &moon_options));
+
+  // The field chain_length is copied from moon_options into MoonCalculator.
+  CalculatorGraphConfig expected_graph =
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
+        node {
+          calculator: "MoonCalculator"
+          node_options {
+            [type.googleapis.com/mediapipe.NodeChainSubgraphOptions] {
+              chain_length: 3
+            }
+          }
+        }
+        type: "MoonSubgraph"
+        graph_options {
+          [type.googleapis.com/mediapipe.NodeChainSubgraphOptions] {}
+        }
+      )pb");
+  EXPECT_THAT(moon_subgraph, mediapipe::EqualsProto(expected_graph));
+}
+
+// Shows ExpandSubgraphs applied twice. "option_value" fields are evaluated
+// and removed on the first ExpandSubgraphs call.  If "option_value" fields
+// are not removed during ExpandSubgraphs, they evaluate incorrectly on the
+// second ExpandSubgraphs call and this test fails on "expected_node_options".
+TEST(SubgraphExpansionTest, SimpleSubgraphOptionsTwice) {
+  GraphRegistry graph_registry;
+
+  // Register a simple-subgraph that accepts graph options.
+  auto moon_subgraph =
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
+        type: "MoonSubgraph"
+        graph_options: {
+          [type.googleapis.com/mediapipe.NodeChainSubgraphOptions] {}
+        }
+        node: {
+          calculator: "MoonCalculator"
+          node_options: {
+            [type.googleapis.com/mediapipe.NodeChainSubgraphOptions] {}
+          }
+          option_value: "chain_length:options/chain_length"
+        }
+      )pb");
+  graph_registry.Register("MoonSubgraph", moon_subgraph);
+
+  // Invoke the simple-subgraph with graph options.
+  // The empty NodeChainSubgraphOptions below allows "option_value" fields
+  // on "MoonCalculator" to evaluate incorrectly, if not removed.
+  auto sky_graph = mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
+    graph_options: {
+      [type.googleapis.com/mediapipe.NodeChainSubgraphOptions] {}
+    }
+    node: {
+      calculator: "MoonSubgraph"
+      options: {
+        [mediapipe.NodeChainSubgraphOptions.ext] {
+          node_type: "DoubleIntCalculator"
+          chain_length: 3
+        }
+      }
+    }
+  )pb");
+
+  // The first ExpandSubgraphs call evaluates and removes "option_value" fields.
+  MP_ASSERT_OK(tool::ExpandSubgraphs(&sky_graph, &graph_registry));
+  auto expanded_1 = sky_graph;
+
+  // The second ExpandSubgraphs call has no effect on the expanded graph.
+  MP_ASSERT_OK(tool::ExpandSubgraphs(&sky_graph, &graph_registry));
+
+  // Validate the expected node_options for the "MoonSubgraph".
+  // If the "option_value" fields are not removed during ExpandSubgraphs,
+  // this test fails with an incorrect value for "chain_length".
+  auto expected_node_options =
+      mediapipe::ParseTextProtoOrDie<mediapipe::NodeChainSubgraphOptions>(
+          "chain_length: 3");
+  mediapipe::NodeChainSubgraphOptions node_options;
+  sky_graph.node(0).node_options(0).UnpackTo(&node_options);
+  ASSERT_THAT(node_options, mediapipe::EqualsProto(expected_node_options));
+
+  // Validate the results from both ExpandSubgraphs() calls.
+  CalculatorGraphConfig expected_graph =
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
+        graph_options {
+          [type.googleapis.com/mediapipe.NodeChainSubgraphOptions] {}
+        }
+        node {
+          name: "moonsubgraph__MoonCalculator"
+          calculator: "MoonCalculator"
+          node_options {
+            [type.googleapis.com/mediapipe.NodeChainSubgraphOptions] {
+              chain_length: 3
+            }
+          }
+        }
+      )pb");
+  EXPECT_THAT(expanded_1, mediapipe::EqualsProto(expected_graph));
+  EXPECT_THAT(sky_graph, mediapipe::EqualsProto(expected_graph));
 }
 
 }  // namespace

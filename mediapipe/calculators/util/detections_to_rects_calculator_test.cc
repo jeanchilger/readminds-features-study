@@ -19,7 +19,6 @@
 #include "mediapipe/framework/calculator.pb.h"
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/calculator_runner.h"
-#include "mediapipe/framework/deps/message_matchers.h"
 #include "mediapipe/framework/formats/detection.pb.h"
 #include "mediapipe/framework/formats/location_data.pb.h"
 #include "mediapipe/framework/formats/rect.pb.h"
@@ -31,6 +30,14 @@
 
 namespace mediapipe {
 namespace {
+
+constexpr char kNormRectsTag[] = "NORM_RECTS";
+constexpr char kRectsTag[] = "RECTS";
+constexpr char kDetectionsTag[] = "DETECTIONS";
+constexpr char kNormRectTag[] = "NORM_RECT";
+constexpr char kImageSizeTag[] = "IMAGE_SIZE";
+constexpr char kRectTag[] = "RECT";
+constexpr char kDetectionTag[] = "DETECTION";
 
 MATCHER_P4(RectEq, x_center, y_center, width, height, "") {
   return testing::Value(arg.x_center(), testing::Eq(x_center)) &&
@@ -84,30 +91,30 @@ Detection DetectionWithRelativeLocationData(double xmin, double ymin,
 }
 
 TEST(DetectionsToRectsCalculatorTest, DetectionToRect) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "DetectionsToRectsCalculator"
     input_stream: "DETECTION:detection"
     output_stream: "RECT:rect"
-  )"));
+  )pb"));
 
   auto detection = absl::make_unique<Detection>(
       DetectionWithLocationData(100, 200, 300, 400));
 
   runner.MutableInputs()
-      ->Tag("DETECTION")
+      ->Tag(kDetectionTag)
       .packets.push_back(
           Adopt(detection.release()).At(Timestamp::PostStream()));
 
   MP_ASSERT_OK(runner.Run()) << "Calculator execution failed.";
-  const std::vector<Packet>& output = runner.Outputs().Tag("RECT").packets;
+  const std::vector<Packet>& output = runner.Outputs().Tag(kRectTag).packets;
   ASSERT_EQ(1, output.size());
   const auto& rect = output[0].Get<Rect>();
   EXPECT_THAT(rect, RectEq(250, 400, 300, 400));
 }
 
-::mediapipe::StatusOr<Rect> RunDetectionKeyPointsToRectCalculation(
+absl::StatusOr<Rect> RunDetectionKeyPointsToRectCalculation(
     Detection detection, std::pair<int, int> image_size) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "DetectionsToRectsCalculator"
     input_stream: "DETECTION:detection"
     input_stream: "IMAGE_SIZE:image_size"
@@ -117,19 +124,19 @@ TEST(DetectionsToRectsCalculatorTest, DetectionToRect) {
         conversion_mode: USE_KEYPOINTS
       }
     }
-  )"));
+  )pb"));
 
   runner.MutableInputs()
-      ->Tag("DETECTION")
+      ->Tag(kDetectionTag)
       .packets.push_back(MakePacket<Detection>(std::move(detection))
                              .At(Timestamp::PostStream()));
   runner.MutableInputs()
-      ->Tag("IMAGE_SIZE")
+      ->Tag(kImageSizeTag)
       .packets.push_back(MakePacket<std::pair<int, int>>(image_size)
                              .At(Timestamp::PostStream()));
 
   MP_RETURN_IF_ERROR(runner.Run());
-  const std::vector<Packet>& output = runner.Outputs().Tag("RECT").packets;
+  const std::vector<Packet>& output = runner.Outputs().Tag(kRectTag).packets;
   RET_CHECK_EQ(output.size(), 1);
   return output[0].Get<Rect>();
 }
@@ -138,52 +145,59 @@ TEST(DetectionsToRectsCalculatorTest, DetectionKeyPointsToRect) {
   auto status_or_value = RunDetectionKeyPointsToRectCalculation(
       /*detection=*/DetectionWithKeyPoints({{0.0f, 0.0f}, {1.0f, 1.0f}}),
       /*image_size=*/{640, 480});
-  EXPECT_THAT(status_or_value.ValueOrDie(), RectEq(320, 240, 640, 480));
+  EXPECT_THAT(status_or_value.value(), RectEq(320, 240, 640, 480));
 
   status_or_value = RunDetectionKeyPointsToRectCalculation(
       /*detection=*/DetectionWithKeyPoints({{0.25f, 0.25f}, {0.75f, 0.75f}}),
       /*image_size=*/{640, 480});
   MP_ASSERT_OK(status_or_value);
-  EXPECT_THAT(status_or_value.ValueOrDie(), RectEq(320, 240, 320, 240));
+  EXPECT_THAT(status_or_value.value(), RectEq(320, 240, 320, 240));
 
   status_or_value = RunDetectionKeyPointsToRectCalculation(
       /*detection=*/DetectionWithKeyPoints({{0.0f, 0.0f}, {0.5f, 0.5f}}),
       /*image_size=*/{640, 480});
   MP_ASSERT_OK(status_or_value);
-  EXPECT_THAT(status_or_value.ValueOrDie(), RectEq(160, 120, 320, 240));
+  EXPECT_THAT(status_or_value.value(), RectEq(160, 120, 320, 240));
 
   status_or_value = RunDetectionKeyPointsToRectCalculation(
       /*detection=*/DetectionWithKeyPoints({{0.5f, 0.5f}, {1.0f, 1.0f}}),
       /*image_size=*/{640, 480});
   MP_ASSERT_OK(status_or_value);
-  EXPECT_THAT(status_or_value.ValueOrDie(), RectEq(480, 360, 320, 240));
+  EXPECT_THAT(status_or_value.value(), RectEq(480, 360, 320, 240));
+
+  status_or_value = RunDetectionKeyPointsToRectCalculation(
+      /*detection=*/DetectionWithKeyPoints({{0.25f, 0.25f}, {0.75f, 0.75f}}),
+      /*image_size=*/{0, 0});
+  MP_ASSERT_OK(status_or_value);
+  EXPECT_THAT(status_or_value.value(), RectEq(0, 0, 0, 0));
 }
 
 TEST(DetectionsToRectsCalculatorTest, DetectionToNormalizedRect) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "DetectionsToRectsCalculator"
     input_stream: "DETECTION:detection"
     output_stream: "NORM_RECT:rect"
-  )"));
+  )pb"));
 
   auto detection = absl::make_unique<Detection>(
       DetectionWithRelativeLocationData(0.1, 0.2, 0.3, 0.4));
 
   runner.MutableInputs()
-      ->Tag("DETECTION")
+      ->Tag(kDetectionTag)
       .packets.push_back(
           Adopt(detection.release()).At(Timestamp::PostStream()));
 
   MP_ASSERT_OK(runner.Run()) << "Calculator execution failed.";
-  const std::vector<Packet>& output = runner.Outputs().Tag("NORM_RECT").packets;
+  const std::vector<Packet>& output =
+      runner.Outputs().Tag(kNormRectTag).packets;
   ASSERT_EQ(1, output.size());
   const auto& rect = output[0].Get<NormalizedRect>();
   EXPECT_THAT(rect, NormRectEq(0.25f, 0.4f, 0.3f, 0.4f));
 }
 
-::mediapipe::StatusOr<NormalizedRect>
-RunDetectionKeyPointsToNormRectCalculation(Detection detection) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+absl::StatusOr<NormalizedRect> RunDetectionKeyPointsToNormRectCalculation(
+    Detection detection) {
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "DetectionsToRectsCalculator"
     input_stream: "DETECTION:detection"
     output_stream: "NORM_RECT:rect"
@@ -192,15 +206,16 @@ RunDetectionKeyPointsToNormRectCalculation(Detection detection) {
         conversion_mode: USE_KEYPOINTS
       }
     }
-  )"));
+  )pb"));
 
   runner.MutableInputs()
-      ->Tag("DETECTION")
+      ->Tag(kDetectionTag)
       .packets.push_back(MakePacket<Detection>(std::move(detection))
                              .At(Timestamp::PostStream()));
 
   MP_RETURN_IF_ERROR(runner.Run());
-  const std::vector<Packet>& output = runner.Outputs().Tag("NORM_RECT").packets;
+  const std::vector<Packet>& output =
+      runner.Outputs().Tag(kNormRectTag).packets;
   RET_CHECK_EQ(output.size(), 1);
   return output[0].Get<NormalizedRect>();
 }
@@ -212,88 +227,89 @@ TEST(DetectionsToRectsCalculatorTest, DetectionKeyPointsToNormalizedRect) {
       /*detection=*/DetectionWithKeyPoints(
           {{0.0f, 0.0f}, {0.5f, 0.5f}, {1.0f, 1.0f}}));
   MP_ASSERT_OK(status_or_value);
-  EXPECT_THAT(status_or_value.ValueOrDie(), RectEq(0.5f, 0.5f, 1.0f, 1.0f));
+  EXPECT_THAT(status_or_value.value(), RectEq(0.5f, 0.5f, 1.0f, 1.0f));
 
   status_or_value = RunDetectionKeyPointsToNormRectCalculation(
       /*detection=*/DetectionWithKeyPoints(
           {{0.25f, 0.25f}, {0.75f, 0.25f}, {0.75f, 0.75f}}));
-  EXPECT_THAT(status_or_value.ValueOrDie(), RectEq(0.5f, 0.5f, 0.5f, 0.5f));
+  EXPECT_THAT(status_or_value.value(), RectEq(0.5f, 0.5f, 0.5f, 0.5f));
 
   status_or_value = RunDetectionKeyPointsToNormRectCalculation(
       /*detection=*/DetectionWithKeyPoints({{0.0f, 0.0f}, {0.5f, 0.5f}}));
   MP_ASSERT_OK(status_or_value);
-  EXPECT_THAT(status_or_value.ValueOrDie(), RectEq(0.25f, 0.25f, 0.5f, 0.5f));
+  EXPECT_THAT(status_or_value.value(), RectEq(0.25f, 0.25f, 0.5f, 0.5f));
 
   status_or_value = RunDetectionKeyPointsToNormRectCalculation(
       /*detection=*/DetectionWithKeyPoints({{0.5f, 0.5f}, {1.0f, 1.0f}}));
   MP_ASSERT_OK(status_or_value);
-  EXPECT_THAT(status_or_value.ValueOrDie(), RectEq(0.75f, 0.75f, 0.5f, 0.5f));
+  EXPECT_THAT(status_or_value.value(), RectEq(0.75f, 0.75f, 0.5f, 0.5f));
 }
 
 TEST(DetectionsToRectsCalculatorTest, DetectionsToRect) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "DetectionsToRectsCalculator"
     input_stream: "DETECTIONS:detections"
     output_stream: "RECT:rect"
-  )"));
+  )pb"));
 
   auto detections(absl::make_unique<std::vector<Detection>>());
   detections->push_back(DetectionWithLocationData(100, 200, 300, 400));
   detections->push_back(DetectionWithLocationData(200, 300, 400, 500));
 
   runner.MutableInputs()
-      ->Tag("DETECTIONS")
+      ->Tag(kDetectionsTag)
       .packets.push_back(
           Adopt(detections.release()).At(Timestamp::PostStream()));
 
   MP_ASSERT_OK(runner.Run()) << "Calculator execution failed.";
-  const std::vector<Packet>& output = runner.Outputs().Tag("RECT").packets;
+  const std::vector<Packet>& output = runner.Outputs().Tag(kRectTag).packets;
   ASSERT_EQ(1, output.size());
   const auto& rect = output[0].Get<Rect>();
   EXPECT_THAT(rect, RectEq(250, 400, 300, 400));
 }
 
 TEST(DetectionsToRectsCalculatorTest, DetectionsToNormalizedRect) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "DetectionsToRectsCalculator"
     input_stream: "DETECTIONS:detections"
     output_stream: "NORM_RECT:rect"
-  )"));
+  )pb"));
 
   auto detections(absl::make_unique<std::vector<Detection>>());
   detections->push_back(DetectionWithRelativeLocationData(0.1, 0.2, 0.3, 0.4));
   detections->push_back(DetectionWithRelativeLocationData(0.2, 0.3, 0.4, 0.5));
 
   runner.MutableInputs()
-      ->Tag("DETECTIONS")
+      ->Tag(kDetectionsTag)
       .packets.push_back(
           Adopt(detections.release()).At(Timestamp::PostStream()));
 
   MP_ASSERT_OK(runner.Run()) << "Calculator execution failed.";
-  const std::vector<Packet>& output = runner.Outputs().Tag("NORM_RECT").packets;
+  const std::vector<Packet>& output =
+      runner.Outputs().Tag(kNormRectTag).packets;
   ASSERT_EQ(1, output.size());
   const auto& rect = output[0].Get<NormalizedRect>();
   EXPECT_THAT(rect, NormRectEq(0.25f, 0.4f, 0.3f, 0.4f));
 }
 
 TEST(DetectionsToRectsCalculatorTest, DetectionsToRects) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "DetectionsToRectsCalculator"
     input_stream: "DETECTIONS:detections"
     output_stream: "RECTS:rect"
-  )"));
+  )pb"));
 
   auto detections(absl::make_unique<std::vector<Detection>>());
   detections->push_back(DetectionWithLocationData(100, 200, 300, 400));
   detections->push_back(DetectionWithLocationData(200, 300, 400, 500));
 
   runner.MutableInputs()
-      ->Tag("DETECTIONS")
+      ->Tag(kDetectionsTag)
       .packets.push_back(
           Adopt(detections.release()).At(Timestamp::PostStream()));
 
   MP_ASSERT_OK(runner.Run()) << "Calculator execution failed.";
-  const std::vector<Packet>& output = runner.Outputs().Tag("RECTS").packets;
+  const std::vector<Packet>& output = runner.Outputs().Tag(kRectsTag).packets;
   ASSERT_EQ(1, output.size());
   const auto& rects = output[0].Get<std::vector<Rect>>();
   ASSERT_EQ(rects.size(), 2);
@@ -302,24 +318,24 @@ TEST(DetectionsToRectsCalculatorTest, DetectionsToRects) {
 }
 
 TEST(DetectionsToRectsCalculatorTest, DetectionsToNormalizedRects) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "DetectionsToRectsCalculator"
     input_stream: "DETECTIONS:detections"
     output_stream: "NORM_RECTS:rect"
-  )"));
+  )pb"));
 
   auto detections(absl::make_unique<std::vector<Detection>>());
   detections->push_back(DetectionWithRelativeLocationData(0.1, 0.2, 0.3, 0.4));
   detections->push_back(DetectionWithRelativeLocationData(0.2, 0.3, 0.4, 0.5));
 
   runner.MutableInputs()
-      ->Tag("DETECTIONS")
+      ->Tag(kDetectionsTag)
       .packets.push_back(
           Adopt(detections.release()).At(Timestamp::PostStream()));
 
   MP_ASSERT_OK(runner.Run()) << "Calculator execution failed.";
   const std::vector<Packet>& output =
-      runner.Outputs().Tag("NORM_RECTS").packets;
+      runner.Outputs().Tag(kNormRectsTag).packets;
   ASSERT_EQ(1, output.size());
   const auto& rects = output[0].Get<std::vector<NormalizedRect>>();
   ASSERT_EQ(rects.size(), 2);
@@ -328,22 +344,22 @@ TEST(DetectionsToRectsCalculatorTest, DetectionsToNormalizedRects) {
 }
 
 TEST(DetectionsToRectsCalculatorTest, DetectionToRects) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "DetectionsToRectsCalculator"
     input_stream: "DETECTION:detection"
     output_stream: "RECTS:rect"
-  )"));
+  )pb"));
 
   auto detection = absl::make_unique<Detection>(
       DetectionWithLocationData(100, 200, 300, 400));
 
   runner.MutableInputs()
-      ->Tag("DETECTION")
+      ->Tag(kDetectionTag)
       .packets.push_back(
           Adopt(detection.release()).At(Timestamp::PostStream()));
 
   MP_ASSERT_OK(runner.Run()) << "Calculator execution failed.";
-  const std::vector<Packet>& output = runner.Outputs().Tag("RECTS").packets;
+  const std::vector<Packet>& output = runner.Outputs().Tag(kRectsTag).packets;
   ASSERT_EQ(1, output.size());
   const auto& rects = output[0].Get<std::vector<Rect>>();
   EXPECT_EQ(rects.size(), 1);
@@ -351,23 +367,23 @@ TEST(DetectionsToRectsCalculatorTest, DetectionToRects) {
 }
 
 TEST(DetectionsToRectsCalculatorTest, DetectionToNormalizedRects) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "DetectionsToRectsCalculator"
     input_stream: "DETECTION:detection"
     output_stream: "NORM_RECTS:rect"
-  )"));
+  )pb"));
 
   auto detection = absl::make_unique<Detection>(
       DetectionWithRelativeLocationData(0.1, 0.2, 0.3, 0.4));
 
   runner.MutableInputs()
-      ->Tag("DETECTION")
+      ->Tag(kDetectionTag)
       .packets.push_back(
           Adopt(detection.release()).At(Timestamp::PostStream()));
 
   MP_ASSERT_OK(runner.Run()) << "Calculator execution failed.";
   const std::vector<Packet>& output =
-      runner.Outputs().Tag("NORM_RECTS").packets;
+      runner.Outputs().Tag(kNormRectsTag).packets;
   ASSERT_EQ(1, output.size());
   const auto& rects = output[0].Get<std::vector<NormalizedRect>>();
   ASSERT_EQ(rects.size(), 1);
@@ -375,17 +391,17 @@ TEST(DetectionsToRectsCalculatorTest, DetectionToNormalizedRects) {
 }
 
 TEST(DetectionsToRectsCalculatorTest, WrongInputToRect) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "DetectionsToRectsCalculator"
     input_stream: "DETECTIONS:detections"
     output_stream: "RECT:rect"
-  )"));
+  )pb"));
 
   auto detections(absl::make_unique<std::vector<Detection>>());
   detections->push_back(DetectionWithRelativeLocationData(0.1, 0.2, 0.3, 0.4));
 
   runner.MutableInputs()
-      ->Tag("DETECTIONS")
+      ->Tag(kDetectionsTag)
       .packets.push_back(
           Adopt(detections.release()).At(Timestamp::PostStream()));
 
@@ -395,17 +411,17 @@ TEST(DetectionsToRectsCalculatorTest, WrongInputToRect) {
 }
 
 TEST(DetectionsToRectsCalculatorTest, WrongInputToNormalizedRect) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "DetectionsToRectsCalculator"
     input_stream: "DETECTIONS:detections"
     output_stream: "NORM_RECT:rect"
-  )"));
+  )pb"));
 
   auto detections(absl::make_unique<std::vector<Detection>>());
   detections->push_back(DetectionWithLocationData(100, 200, 300, 400));
 
   runner.MutableInputs()
-      ->Tag("DETECTIONS")
+      ->Tag(kDetectionsTag)
       .packets.push_back(
           Adopt(detections.release()).At(Timestamp::PostStream()));
 

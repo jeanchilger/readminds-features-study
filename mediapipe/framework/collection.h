@@ -26,9 +26,11 @@
 #include "absl/base/macros.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "mediapipe/framework/collection_item_id.h"
 #include "mediapipe/framework/port/logging.h"
 #include "mediapipe/framework/tool/tag_map.h"
+#include "mediapipe/framework/tool/tag_map_helper.h"
 #include "mediapipe/framework/tool/validate_name.h"
 #include "mediapipe/framework/type_map.h"
 
@@ -49,7 +51,7 @@ struct CollectionErrorHandlerFatal {
   // Since there isn't any state and we're not returning anything, we
   // get away with only one version of this function (which is const
   // but returns a non-const reference).
-  T& GetFallback(const std::string& tag, int index) const {
+  T& GetFallback(const absl::string_view tag, int index) const {
     LOG(FATAL) << "Failed to get tag \"" << tag << "\" index " << index;
     std::abort();
   }
@@ -130,16 +132,16 @@ class Collection {
   const value_type& Get(CollectionItemId id) const;
 
   // Convenience functions.
-  value_type& Get(const std::string& tag, int index);
-  const value_type& Get(const std::string& tag, int index) const;
+  value_type& Get(absl::string_view tag, int index);
+  const value_type& Get(absl::string_view tag, int index) const;
 
   // Equivalent to Get("", index);
   value_type& Index(int index);
   const value_type& Index(int index) const;
 
   // Equivalent to Get(tag, 0);
-  value_type& Tag(const std::string& tag);
-  const value_type& Tag(const std::string& tag) const;
+  value_type& Tag(absl::string_view tag);
+  const value_type& Tag(absl::string_view tag) const;
 
   // These functions only exist for collections with storage ==
   // kStorePointer.  GetPtr returns the stored ptr value rather than
@@ -178,13 +180,15 @@ class Collection {
   ////////////////////////////////////////
 
   // Returns true if the provided tag is available (not necessarily set yet).
-  bool HasTag(const std::string& tag) const { return tag_map_->HasTag(tag); }
+  bool HasTag(const absl::string_view tag) const {
+    return tag_map_->HasTag(tag);
+  }
 
   // Returns the number of entries in this collection.
   int NumEntries() const { return tag_map_->NumEntries(); }
 
   // Returns the number of entries with the provided tag.
-  int NumEntries(const std::string& tag) const {
+  int NumEntries(const absl::string_view tag) const {
     return tag_map_->NumEntries(tag);
   }
 
@@ -199,7 +203,7 @@ class Collection {
   // However, be careful in using this fact, as it circumvents the
   // validity checks in GetId() (i.e. ++GetId("BLAH", 2) looks like it
   // is valid, while GetId("BLAH", 3) is not valid).
-  CollectionItemId GetId(const std::string& tag, int index) const {
+  CollectionItemId GetId(const absl::string_view tag, int index) const {
     return tag_map_->GetId(tag, index);
   }
 
@@ -233,10 +237,10 @@ class Collection {
   //   for (CollectionItemId id = collection.BeginId(tag);
   //        id < collection.EndId(tag); ++id) {
   //   }
-  CollectionItemId BeginId(const std::string& tag) const {
+  CollectionItemId BeginId(const absl::string_view tag) const {
     return tag_map_->BeginId(tag);
   }
-  CollectionItemId EndId(const std::string& tag) const {
+  CollectionItemId EndId(const absl::string_view tag) const {
     return tag_map_->EndId(tag);
   }
 
@@ -379,39 +383,17 @@ Collection<T, storage, ErrorHandler>::Collection(
 
 template <typename T, CollectionStorage storage, typename ErrorHandler>
 Collection<T, storage, ErrorHandler>::Collection(
-    const tool::TagAndNameInfo& info) {
-  tag_map_ = std::move(tool::TagMap::Create(info).ValueOrDie());
-  if (tag_map_->NumEntries() != 0) {
-    data_ = absl::make_unique<stored_type[]>(tag_map_->NumEntries());
-  }
-}
+    const tool::TagAndNameInfo& info)
+    : Collection(tool::TagMap::Create(info).value()) {}
 
 template <typename T, CollectionStorage storage, typename ErrorHandler>
-Collection<T, storage, ErrorHandler>::Collection(const int num_entries) {
-  proto_ns::RepeatedPtrField<ProtoString> fields;
-  for (int i = 0; i < num_entries; ++i) {
-    *fields.Add() = absl::StrCat("name", i);
-  }
-  tag_map_ = std::move(tool::TagMap::Create(fields).ValueOrDie());
-  if (tag_map_->NumEntries() != 0) {
-    data_ = absl::make_unique<stored_type[]>(tag_map_->NumEntries());
-  }
-}
+Collection<T, storage, ErrorHandler>::Collection(const int num_entries)
+    : Collection(tool::CreateTagMap(num_entries).value()) {}
 
 template <typename T, CollectionStorage storage, typename ErrorHandler>
 Collection<T, storage, ErrorHandler>::Collection(
-    const std::initializer_list<std::string>& tag_names) {
-  proto_ns::RepeatedPtrField<ProtoString> fields;
-  int i = 0;
-  for (const std::string& name : tag_names) {
-    *fields.Add() = absl::StrCat(name, ":name", i);
-    ++i;
-  }
-  tag_map_ = std::move(tool::TagMap::Create(fields).ValueOrDie());
-  if (tag_map_->NumEntries() != 0) {
-    data_ = absl::make_unique<stored_type[]>(tag_map_->NumEntries());
-  }
-}
+    const std::initializer_list<std::string>& tag_names)
+    : Collection(tool::CreateTagMapFromTags(tag_names).value()) {}
 
 template <typename T, CollectionStorage storage, typename ErrorHandler>
 bool Collection<T, storage, ErrorHandler>::UsesTags() const {
@@ -425,7 +407,7 @@ bool Collection<T, storage, ErrorHandler>::UsesTags() const {
     return false;
   }
   // If the one tag present is non-empty then we are using tags.
-  return mapping.begin()->first != "";
+  return !mapping.begin()->first.empty();
 }
 
 template <typename T, CollectionStorage storage, typename ErrorHandler>
@@ -448,7 +430,7 @@ template <typename T, CollectionStorage storage, typename ErrorHandler>
 typename Collection<T, storage, ErrorHandler>::value_type*&
 Collection<T, storage, ErrorHandler>::GetPtr(CollectionItemId id) {
   static_assert(storage == CollectionStorage::kStorePointer,
-                "::mediapipe::internal::Collection<T>::GetPtr() is only "
+                "mediapipe::internal::Collection<T>::GetPtr() is only "
                 "available for collections that were defined with template "
                 "argument storage == CollectionStorage::kStorePointer.");
   CHECK_LE(BeginId(), id);
@@ -460,7 +442,7 @@ template <typename T, CollectionStorage storage, typename ErrorHandler>
 const typename Collection<T, storage, ErrorHandler>::value_type*
 Collection<T, storage, ErrorHandler>::GetPtr(CollectionItemId id) const {
   static_assert(storage == CollectionStorage::kStorePointer,
-                "::mediapipe::internal::Collection<T>::GetPtr() is only "
+                "mediapipe::internal::Collection<T>::GetPtr() is only "
                 "available for collections that were defined with template "
                 "argument storage == CollectionStorage::kStorePointer.");
   CHECK_LE(BeginId(), id);
@@ -470,7 +452,8 @@ Collection<T, storage, ErrorHandler>::GetPtr(CollectionItemId id) const {
 
 template <typename T, CollectionStorage storage, typename ErrorHandler>
 typename Collection<T, storage, ErrorHandler>::value_type&
-Collection<T, storage, ErrorHandler>::Get(const std::string& tag, int index) {
+Collection<T, storage, ErrorHandler>::Get(const absl::string_view tag,
+                                          int index) {
   CollectionItemId id = GetId(tag, index);
   if (!id.IsValid()) {
     return error_handler_.GetFallback(tag, index);
@@ -480,7 +463,7 @@ Collection<T, storage, ErrorHandler>::Get(const std::string& tag, int index) {
 
 template <typename T, CollectionStorage storage, typename ErrorHandler>
 const typename Collection<T, storage, ErrorHandler>::value_type&
-Collection<T, storage, ErrorHandler>::Get(const std::string& tag,
+Collection<T, storage, ErrorHandler>::Get(const absl::string_view tag,
                                           int index) const {
   CollectionItemId id = GetId(tag, index);
   if (!id.IsValid()) {
@@ -503,13 +486,13 @@ Collection<T, storage, ErrorHandler>::Index(int index) const {
 
 template <typename T, CollectionStorage storage, typename ErrorHandler>
 typename Collection<T, storage, ErrorHandler>::value_type&
-Collection<T, storage, ErrorHandler>::Tag(const std::string& tag) {
+Collection<T, storage, ErrorHandler>::Tag(const absl::string_view tag) {
   return Get(tag, 0);
 }
 
 template <typename T, CollectionStorage storage, typename ErrorHandler>
 const typename Collection<T, storage, ErrorHandler>::value_type&
-Collection<T, storage, ErrorHandler>::Tag(const std::string& tag) const {
+Collection<T, storage, ErrorHandler>::Tag(const absl::string_view tag) const {
   return Get(tag, 0);
 }
 
@@ -556,21 +539,23 @@ Collection<T, storage, ErrorHandler>::end() const {
 // Returns c.HasTag(tag) && !Tag(tag)->IsEmpty() (just for convenience).
 // This version is used with Calculator.
 template <class S>
-bool HasTagValue(const internal::Collection<S*>& c, const std::string& tag) {
+bool HasTagValue(const internal::Collection<S*>& c,
+                 const absl::string_view tag) {
   return c.HasTag(tag) && !c.Tag(tag)->IsEmpty();
 }
 
 // Returns c.HasTag(tag) && !Tag(tag).IsEmpty() (just for convenience).
 // This version is used with CalculatorBase.
 template <class S>
-bool HasTagValue(const internal::Collection<S>& c, const std::string& tag) {
+bool HasTagValue(const internal::Collection<S>& c,
+                 const absl::string_view tag) {
   return c.HasTag(tag) && !c.Tag(tag).IsEmpty();
 }
 
 // Returns c.HasTag(tag) && !Tag(tag).IsEmpty() (just for convenience).
 // This version is used with Calculator or CalculatorBase.
 template <class C>
-bool HasTagValue(const C& c, const std::string& tag) {
+bool HasTagValue(const C& c, const absl::string_view tag) {
   return HasTagValue(c->Inputs(), tag);
 }
 

@@ -62,9 +62,8 @@ cc_library(
         ":advanced_proto_lite",
         ":core_proto",
         "//mediapipe/framework:port",
-    ] + select({
-        "//conditions:default": ["@com_google_protobuf//:protobuf"],
-    }),
+        "@com_google_protobuf//:protobuf",
+    ],
 )
 
 cc_library(
@@ -77,9 +76,8 @@ cc_library(
     deps = [
         ":core_proto",
         "//mediapipe/framework:port",
-    ] + select({
-        "//conditions:default": ["@com_google_protobuf//:protobuf"],
-    }),
+        "@com_google_protobuf//:protobuf",
+    ],
 )
 
 cc_library(
@@ -98,8 +96,8 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//mediapipe/framework:port",
         "//third_party:glog",
+        "@com_google_absl//absl/flags:flag",
     ],
 )
 
@@ -112,9 +110,8 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//mediapipe/framework:port",
-    ] + select({
-        "//conditions:default": ["@com_google_protobuf//:protobuf"],
-    }),
+        "@com_google_protobuf//:protobuf",
+    ],
 )
 
 cc_library(
@@ -173,12 +170,13 @@ cc_library(
     hdrs = [
         "gmock.h",
         "gtest.h",
+        "gtest-spi.h",
         "status_matchers.h",
     ],
     visibility = ["//visibility:public"],
     deps = [
         ":status_matchers",
-        "//mediapipe/framework:port",
+        "//mediapipe/framework/deps:message_matchers",
         "@com_google_googletest//:gtest",
     ],
 )
@@ -189,12 +187,13 @@ cc_library(
     hdrs = [
         "gmock.h",
         "gtest.h",
+        "gtest-spi.h",
         "status_matchers.h",
     ],
     visibility = ["//visibility:public"],
     deps = [
         ":status_matchers",
-        "//mediapipe/framework:port",
+        "//mediapipe/framework/deps:message_matchers",
         "//mediapipe/framework/deps:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
@@ -230,6 +229,16 @@ cc_library(
     hdrs = ["numbers.h"],
     visibility = ["//visibility:public"],
     deps = ["//mediapipe/framework/deps:numbers"],
+)
+
+# Disabling opencv when defining MEDIAPIPE_DISABLE_OPENCV to 1 in the bazel command.
+# Note that this only applies to a select few calculators/framework components currently.
+config_setting(
+    name = "disable_opencv",
+    define_values = {
+        "MEDIAPIPE_DISABLE_OPENCV": "1",
+    },
+    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -395,7 +404,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//mediapipe/framework:port",
-        "//mediapipe/framework/deps:statusor",
+        "@com_google_absl//absl/status:statusor",
     ],
 )
 
