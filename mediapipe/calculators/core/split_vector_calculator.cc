@@ -26,7 +26,7 @@
 
 #if !defined(MEDIAPIPE_DISABLE_GL_COMPUTE)
 #include "tensorflow/lite/delegates/gpu/gl/gl_buffer.h"
-#endif  //  !MEDIAPIPE_DISABLE_GPU
+#endif  // !defined(MEDIAPIPE_DISABLE_GL_COMPUTE)
 
 namespace mediapipe {
 
@@ -79,5 +79,8 @@ REGISTER_CALCULATOR(SplitDetectionVectorCalculator);
 typedef SplitVectorCalculator<mediapipe::ClassificationList, false>
     SplitClassificationListVectorCalculator;
 REGISTER_CALCULATOR(SplitClassificationListVectorCalculator);
+
+typedef SplitVectorCalculator<uint64_t, false> SplitUint64tVectorCalculator;
+REGISTER_CALCULATOR(SplitUint64tVectorCalculator);
 
 }  // namespace mediapipe

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "absl/flags/flag.h"
 #include "absl/strings/substitute.h"
 #include "mediapipe/calculators/tensorflow/tensorflow_session.h"
 #include "mediapipe/calculators/tensorflow/tensorflow_session_from_frozen_graph_calculator.pb.h"
@@ -35,6 +36,10 @@ namespace mediapipe {
 namespace {
 
 namespace tf = ::tensorflow;
+
+constexpr char kStringModelFilePathTag[] = "STRING_MODEL_FILE_PATH";
+constexpr char kStringModelTag[] = "STRING_MODEL";
+constexpr char kSessionTag[] = "SESSION";
 
 std::string GetGraphDefPath() {
   return mediapipe::file::JoinPath("./",
@@ -111,7 +116,7 @@ TEST_F(TensorFlowSessionFromFrozenGraphCalculatorTest,
 
   MP_ASSERT_OK(runner.Run());
   const TensorFlowSession& session =
-      runner.OutputSidePackets().Tag("SESSION").Get<TensorFlowSession>();
+      runner.OutputSidePackets().Tag(kSessionTag).Get<TensorFlowSession>();
   VerifySignatureMap(session);
 }
 
@@ -120,7 +125,7 @@ TEST_F(TensorFlowSessionFromFrozenGraphCalculatorTest,
 TEST_F(TensorFlowSessionFromFrozenGraphCalculatorTest,
        ProducesPacketUsableByTensorFlowInferenceCalculator) {
   CalculatorGraphConfig config =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(
           absl::Substitute(R"(
       node {
         calculator: "TensorFlowInferenceCalculator"
@@ -153,7 +158,7 @@ TEST_F(TensorFlowSessionFromFrozenGraphCalculatorTest,
   StatusOrPoller status_or_poller =
       graph.AddOutputStreamPoller("multiplied_tensor");
   ASSERT_TRUE(status_or_poller.ok());
-  OutputStreamPoller poller = std::move(status_or_poller.ValueOrDie());
+  OutputStreamPoller poller = std::move(status_or_poller.value());
 
   MP_ASSERT_OK(graph.StartRun({}));
   MP_ASSERT_OK(graph.AddPacketToInputStream(
@@ -189,12 +194,12 @@ TEST_F(TensorFlowSessionFromFrozenGraphCalculatorTest,
   std::string serialized_graph_contents;
   MP_EXPECT_OK(mediapipe::file::GetContents(GetGraphDefPath(),
                                             &serialized_graph_contents));
-  runner.MutableSidePackets()->Tag("STRING_MODEL") =
+  runner.MutableSidePackets()->Tag(kStringModelTag) =
       Adopt(new std::string(serialized_graph_contents));
   MP_ASSERT_OK(runner.Run());
 
   const TensorFlowSession& session =
-      runner.OutputSidePackets().Tag("SESSION").Get<TensorFlowSession>();
+      runner.OutputSidePackets().Tag(kSessionTag).Get<TensorFlowSession>();
   VerifySignatureMap(session);
 }
 
@@ -212,12 +217,12 @@ TEST_F(
           }
         })",
                                            calculator_options_->DebugString()));
-  runner.MutableSidePackets()->Tag("STRING_MODEL_FILE_PATH") =
+  runner.MutableSidePackets()->Tag(kStringModelFilePathTag) =
       Adopt(new std::string(GetGraphDefPath()));
   MP_ASSERT_OK(runner.Run());
 
   const TensorFlowSession& session =
-      runner.OutputSidePackets().Tag("SESSION").Get<TensorFlowSession>();
+      runner.OutputSidePackets().Tag(kSessionTag).Get<TensorFlowSession>();
   VerifySignatureMap(session);
 }
 
@@ -233,7 +238,7 @@ TEST_F(TensorFlowSessionFromFrozenGraphCalculatorTest,
           }
         })",
                                            calculator_options_->DebugString()));
-  runner.MutableSidePackets()->Tag("STRING_MODEL_FILE_PATH") =
+  runner.MutableSidePackets()->Tag(kStringModelFilePathTag) =
       Adopt(new std::string(GetGraphDefPath()));
   auto run_status = runner.Run();
   EXPECT_THAT(
@@ -254,12 +259,12 @@ TEST_F(TensorFlowSessionFromFrozenGraphCalculatorTest,
           }
         })",
                                            calculator_options_->DebugString()));
-  runner.MutableSidePackets()->Tag("STRING_MODEL_FILE_PATH") =
+  runner.MutableSidePackets()->Tag(kStringModelFilePathTag) =
       Adopt(new std::string(GetGraphDefPath()));
   std::string serialized_graph_contents;
   MP_EXPECT_OK(mediapipe::file::GetContents(GetGraphDefPath(),
                                             &serialized_graph_contents));
-  runner.MutableSidePackets()->Tag("STRING_MODEL") =
+  runner.MutableSidePackets()->Tag(kStringModelTag) =
       Adopt(new std::string(serialized_graph_contents));
   auto run_status = runner.Run();
   EXPECT_THAT(
@@ -281,12 +286,12 @@ TEST_F(TensorFlowSessionFromFrozenGraphCalculatorTest,
           }
         })",
                                            calculator_options_->DebugString()));
-  runner.MutableSidePackets()->Tag("STRING_MODEL_FILE_PATH") =
+  runner.MutableSidePackets()->Tag(kStringModelFilePathTag) =
       Adopt(new std::string(GetGraphDefPath()));
   std::string serialized_graph_contents;
   MP_EXPECT_OK(mediapipe::file::GetContents(GetGraphDefPath(),
                                             &serialized_graph_contents));
-  runner.MutableSidePackets()->Tag("STRING_MODEL") =
+  runner.MutableSidePackets()->Tag(kStringModelTag) =
       Adopt(new std::string(serialized_graph_contents));
   auto run_status = runner.Run();
   EXPECT_THAT(
@@ -309,7 +314,7 @@ TEST_F(TensorFlowSessionFromFrozenGraphCalculatorTest,
   MP_ASSERT_OK(runner.Run());
 
   const TensorFlowSession& session =
-      runner.OutputSidePackets().Tag("SESSION").Get<TensorFlowSession>();
+      runner.OutputSidePackets().Tag(kSessionTag).Get<TensorFlowSession>();
   VerifySignatureMap(session);
 }
 

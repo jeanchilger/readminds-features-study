@@ -74,13 +74,13 @@ class OutputStreamHandler {
   // flat_output_stream_managers is expected to point to a contiguous
   // flat array with OutputStreamManagers corresponding to the id's in
   // OutputStreamHandler::output_stream_managers_ (meaning it should
-  // point to somewhere in the middle of the master flat array of all
+  // point to somewhere in the middle of the main flat array of all
   // output stream managers).
-  ::mediapipe::Status InitializeOutputStreamManagers(
+  absl::Status InitializeOutputStreamManagers(
       OutputStreamManager* flat_output_stream_managers);
 
   // Sets up output shards by connecting to the managers.
-  ::mediapipe::Status SetupOutputShards(OutputStreamShardSet* output_shards);
+  absl::Status SetupOutputShards(OutputStreamShardSet* output_shards);
 
   int NumOutputStreams() const { return output_stream_managers_.NumEntries(); }
 
@@ -91,8 +91,7 @@ class OutputStreamHandler {
 
   // Calls OutputStreamManager::PrepareForRun(error_callback) per stream, and
   // resets data memebers.
-  void PrepareForRun(
-      const std::function<void(::mediapipe::Status)>& error_callback)
+  void PrepareForRun(const std::function<void(absl::Status)>& error_callback)
       ABSL_LOCKS_EXCLUDED(timestamp_mutex_);
 
   // Marks the output streams as started and propagates any changes made in
@@ -203,12 +202,12 @@ using OutputStreamHandlerRegistry = GlobalFactoryRegistry<
 }  // namespace mediapipe
 
 // Macro for registering the output stream handler.
-#define REGISTER_OUTPUT_STREAM_HANDLER(name)                                 \
-  REGISTER_FACTORY_FUNCTION_QUALIFIED(                                       \
-      ::mediapipe::OutputStreamHandlerRegistry, output_handler_registration, \
-      name,                                                                  \
-      absl::make_unique<name, std::shared_ptr<tool::TagMap>,                 \
-                        CalculatorContextManager*, const MediaPipeOptions&,  \
+#define REGISTER_OUTPUT_STREAM_HANDLER(name)                                \
+  REGISTER_FACTORY_FUNCTION_QUALIFIED(                                      \
+      mediapipe::OutputStreamHandlerRegistry, output_handler_registration,  \
+      name,                                                                 \
+      absl::make_unique<name, std::shared_ptr<tool::TagMap>,                \
+                        CalculatorContextManager*, const MediaPipeOptions&, \
                         bool>)
 
 #endif  // MEDIAPIPE_FRAMEWORK_OUTPUT_STREAM_HANDLER_H_

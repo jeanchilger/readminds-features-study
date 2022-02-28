@@ -66,8 +66,7 @@ DEFINE_validator(frame_height, &ValidateFrameSizeFlag);
 
 DEFINE_int32(
         frame_rate, -1,
-        "Frame rate for the input video/camera. " +
-            "Expressed in frames per second.");
+        "Frame rate for the input video/camera. Expressed in frames per second.");
 DEFINE_validator(frame_rate, &ValidateFrameRateFlag);
 
 DEFINE_string(

@@ -39,8 +39,6 @@
 
 namespace mediapipe {
 
-using ::tflite::Interpreter;
-
 void DoSmokeTest(const std::string& graph_proto) {
   const int width = 8;
   const int height = 8;
@@ -111,9 +109,9 @@ TEST(InferenceCalculatorTest, SmokeTest) {
   // Test CPU inference only.
   DoSmokeTest(/*graph_proto=*/absl::StrReplaceAll(
       graph_proto, {{"$delegate", "delegate { tflite {} }"}}));
-  DoSmokeTest(/*graph_proto=*/absl::StrReplaceAll(
-      graph_proto, {{"$delegate", "delegate { xnnpack {} }"}}));
-  DoSmokeTest(/*graph_proto=*/absl::StrReplaceAll(
+  DoSmokeTest(absl::StrReplaceAll(graph_proto,
+                                  {{"$delegate", "delegate { xnnpack {} }"}}));
+  DoSmokeTest(absl::StrReplaceAll(
       graph_proto,
       {{"$delegate", "delegate { xnnpack { num_threads: 10 } }"}}));
 }

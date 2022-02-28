@@ -12,11 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mediapipe/calculators/tensor/tensors_to_floats_calculator.pb.h"
+#include "mediapipe/framework/api2/node.h"
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/formats/tensor.h"
 #include "mediapipe/framework/port/ret_check.h"
 
 namespace mediapipe {
+
+namespace {
+
+inline float Sigmoid(float value) { return 1.0f / (1.0f + std::exp(-value)); }
+
+}  // namespace
 
 // A calculator for converting Tensors to to a float or a float vector.
 //
@@ -36,62 +44,63 @@ namespace mediapipe {
 //   input_stream: "TENSORS:tensors"
 //   output_stream: "FLOATS:floats"
 // }
-class TensorsToFloatsCalculator : public CalculatorBase {
+namespace api2 {
+class TensorsToFloatsCalculator : public Node {
  public:
-  static ::mediapipe::Status GetContract(CalculatorContract* cc);
+  static constexpr Input<std::vector<Tensor>> kInTensors{"TENSORS"};
+  static constexpr Output<float>::Optional kOutFloat{"FLOAT"};
+  static constexpr Output<std::vector<float>>::Optional kOutFloats{"FLOATS"};
+  MEDIAPIPE_NODE_INTERFACE(TensorsToFloatsCalculator, kInTensors, kOutFloat,
+                           kOutFloats);
 
-  ::mediapipe::Status Open(CalculatorContext* cc) override;
+  static absl::Status UpdateContract(CalculatorContract* cc);
+  absl::Status Open(CalculatorContext* cc) final;
+  absl::Status Process(CalculatorContext* cc) final;
 
-  ::mediapipe::Status Process(CalculatorContext* cc) override;
+ private:
+  ::mediapipe::TensorsToFloatsCalculatorOptions options_;
 };
-REGISTER_CALCULATOR(TensorsToFloatsCalculator);
+MEDIAPIPE_REGISTER_NODE(TensorsToFloatsCalculator);
 
-::mediapipe::Status TensorsToFloatsCalculator::GetContract(
-    CalculatorContract* cc) {
-  RET_CHECK(cc->Inputs().HasTag("TENSORS"));
-  RET_CHECK(cc->Outputs().HasTag("FLOATS") || cc->Outputs().HasTag("FLOAT"));
-
-  cc->Inputs().Tag("TENSORS").Set<std::vector<Tensor>>();
-  if (cc->Outputs().HasTag("FLOATS")) {
-    cc->Outputs().Tag("FLOATS").Set<std::vector<float>>();
-  }
-  if (cc->Outputs().HasTag("FLOAT")) {
-    cc->Outputs().Tag("FLOAT").Set<float>();
-  }
-
-  return ::mediapipe::OkStatus();
+absl::Status TensorsToFloatsCalculator::UpdateContract(CalculatorContract* cc) {
+  // Only exactly a single output allowed.
+  RET_CHECK(kOutFloat(cc).IsConnected() ^ kOutFloats(cc).IsConnected());
+  return absl::OkStatus();
 }
 
-::mediapipe::Status TensorsToFloatsCalculator::Open(CalculatorContext* cc) {
-  cc->SetOffset(TimestampDiff(0));
-
-  return ::mediapipe::OkStatus();
+absl::Status TensorsToFloatsCalculator::Open(CalculatorContext* cc) {
+  options_ = cc->Options<::mediapipe::TensorsToFloatsCalculatorOptions>();
+  return absl::OkStatus();
 }
 
-::mediapipe::Status TensorsToFloatsCalculator::Process(CalculatorContext* cc) {
-  RET_CHECK(!cc->Inputs().Tag("TENSORS").IsEmpty());
-
-  const auto& input_tensors =
-      cc->Inputs().Tag("TENSORS").Get<std::vector<Tensor>>();
+absl::Status TensorsToFloatsCalculator::Process(CalculatorContext* cc) {
+  const auto& input_tensors = *kInTensors(cc);
+  RET_CHECK(!input_tensors.empty());
   // TODO: Add option to specify which tensor to take from.
   auto view = input_tensors[0].GetCpuReadView();
   auto raw_floats = view.buffer<float>();
   int num_values = input_tensors[0].shape().num_elements();
+  auto output_floats = absl::make_unique<std::vector<float>>(
+      raw_floats, raw_floats + num_values);
 
-  if (cc->Outputs().HasTag("FLOAT")) {
-    // TODO: Could add an index in the option to specifiy returning one
-    // value of a float array.
+  switch (options_.activation()) {
+    case TensorsToFloatsCalculatorOptions::SIGMOID:
+      std::transform(output_floats->begin(), output_floats->end(),
+                     output_floats->begin(), Sigmoid);
+      break;
+    case TensorsToFloatsCalculatorOptions::NONE:
+      break;
+  }
+
+  if (kOutFloat(cc).IsConnected()) {
+    // TODO: Could add an index in the option to specifiy returning
+    // one value of a float array.
     RET_CHECK_EQ(num_values, 1);
-    cc->Outputs().Tag("FLOAT").AddPacket(
-        MakePacket<float>(raw_floats[0]).At(cc->InputTimestamp()));
+    kOutFloat(cc).Send(output_floats->at(0));
+  } else {
+    kOutFloats(cc).Send(std::move(output_floats));
   }
-  if (cc->Outputs().HasTag("FLOATS")) {
-    auto output_floats = absl::make_unique<std::vector<float>>(
-        raw_floats, raw_floats + num_values);
-    cc->Outputs().Tag("FLOATS").Add(output_floats.release(),
-                                    cc->InputTimestamp());
-  }
-
-  return ::mediapipe::OkStatus();
+  return absl::OkStatus();
 }
+}  // namespace api2
 }  // namespace mediapipe

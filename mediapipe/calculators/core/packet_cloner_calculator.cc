@@ -45,22 +45,25 @@ namespace mediapipe {
 //   packet_inner_join_calculator.cc: Don't output unless all inputs are new.
 class PacketClonerCalculator : public CalculatorBase {
  public:
-  static ::mediapipe::Status GetContract(CalculatorContract* cc) {
+  static absl::Status GetContract(CalculatorContract* cc) {
     const int tick_signal_index = cc->Inputs().NumEntries() - 1;
     for (int i = 0; i < tick_signal_index; ++i) {
       cc->Inputs().Index(i).SetAny();
       cc->Outputs().Index(i).SetSameAs(&cc->Inputs().Index(i));
     }
     cc->Inputs().Index(tick_signal_index).SetAny();
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
-  ::mediapipe::Status Open(CalculatorContext* cc) final {
+  absl::Status Open(CalculatorContext* cc) final {
     // Load options.
     const auto calculator_options =
         cc->Options<mediapipe::PacketClonerCalculatorOptions>();
     output_only_when_all_inputs_received_ =
-        calculator_options.output_only_when_all_inputs_received();
+        calculator_options.output_only_when_all_inputs_received() ||
+        calculator_options.output_packets_only_when_all_inputs_received();
+    output_empty_packets_before_all_inputs_received_ =
+        calculator_options.output_packets_only_when_all_inputs_received();
 
     // Parse input streams.
     tick_signal_index_ = cc->Inputs().NumEntries() - 1;
@@ -71,10 +74,10 @@ class PacketClonerCalculator : public CalculatorBase {
         cc->Outputs().Index(i).SetHeader(cc->Inputs().Index(i).Header());
       }
     }
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
-  ::mediapipe::Status Process(CalculatorContext* cc) final {
+  absl::Status Process(CalculatorContext* cc) final {
     // Store input signals.
     for (int i = 0; i < tick_signal_index_; ++i) {
       if (!cc->Inputs().Index(i).Value().IsEmpty()) {
@@ -88,7 +91,10 @@ class PacketClonerCalculator : public CalculatorBase {
         // Return if one of the input is null.
         for (int i = 0; i < tick_signal_index_; ++i) {
           if (current_[i].IsEmpty()) {
-            return ::mediapipe::OkStatus();
+            if (output_empty_packets_before_all_inputs_received_) {
+              SetAllNextTimestampBounds(cc);
+            }
+            return absl::OkStatus();
           }
         }
       }
@@ -103,13 +109,21 @@ class PacketClonerCalculator : public CalculatorBase {
         }
       }
     }
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
  private:
+  void SetAllNextTimestampBounds(CalculatorContext* cc) {
+    for (int j = 0; j < tick_signal_index_; ++j) {
+      cc->Outputs().Index(j).SetNextTimestampBound(
+          cc->InputTimestamp().NextAllowedInStream());
+    }
+  }
+
   std::vector<Packet> current_;
   int tick_signal_index_;
   bool output_only_when_all_inputs_received_;
+  bool output_empty_packets_before_all_inputs_received_;
 };
 
 REGISTER_CALCULATOR(PacketClonerCalculator);

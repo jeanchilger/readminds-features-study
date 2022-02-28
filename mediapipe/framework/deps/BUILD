@@ -16,10 +16,27 @@
 #   The dependencies of mediapipe.
 
 load("//mediapipe/framework/port:build_config.bzl", "mediapipe_cc_proto_library")
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
 licenses(["notice"])
 
 package(default_visibility = ["//visibility:private"])
+
+bzl_library(
+    name = "expand_template_bzl",
+    srcs = [
+        "expand_template.bzl",
+    ],
+    visibility = ["//mediapipe/framework:__subpackages__"],
+)
+
+bzl_library(
+    name = "descriptor_set_bzl",
+    srcs = [
+        "descriptor_set.bzl",
+    ],
+    visibility = ["//mediapipe/framework:__subpackages__"],
+)
 
 proto_library(
     name = "proto_descriptor_proto",
@@ -70,10 +87,11 @@ cc_library(
     name = "message_matchers",
     testonly = True,
     hdrs = ["message_matchers.h"],
-    visibility = ["//visibility:public"],
+    # Use this library through "mediapipe/framework/port:gtest_main".
+    visibility = ["//mediapipe/framework/port:__pkg__"],
     deps = [
         "//mediapipe/framework/port:core_proto",
-        "//mediapipe/framework/port:gtest_main",
+        "@com_google_googletest//:gtest",
     ],
 )
 
@@ -94,7 +112,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":file_path",
-        ":status",
+        "//mediapipe/framework/port:status",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -258,22 +276,6 @@ cc_library(
 )
 
 cc_library(
-    name = "statusor",
-    srcs = ["statusor.cc"],
-    hdrs = [
-        "statusor.h",
-        "statusor_internals.h",
-    ],
-    # Use this library through "mediapipe/framework/port:statusor".
-    visibility = ["//mediapipe/framework/port:__pkg__"],
-    deps = [
-        ":status",
-        "//mediapipe/framework/port:logging",
-        "@com_google_absl//absl/base:core_headers",
-    ],
-)
-
-cc_library(
     name = "re2",
     hdrs = [
         "re2.h",
@@ -288,7 +290,8 @@ cc_library(
     # Use this library through "mediapipe/framework/port:gtest_main".
     visibility = ["//mediapipe/framework/port:__pkg__"],
     deps = [
-        ":status",
+        "//mediapipe/framework/port:statusor",
+        "@com_google_absl//absl/status",
         "@com_google_googletest//:gtest",
     ],
 )
@@ -425,18 +428,6 @@ cc_test(
     deps = [
         ":status",
         ":status_matchers",
-        "//mediapipe/framework/port:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "statusor_test",
-    size = "small",
-    srcs = ["statusor_test.cc"],
-    linkstatic = 1,
-    deps = [
-        ":status",
-        ":statusor",
         "//mediapipe/framework/port:gtest_main",
     ],
 )

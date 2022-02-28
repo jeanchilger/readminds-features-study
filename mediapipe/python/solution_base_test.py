@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Tests for mediapipe.python.solution_base."""
 
 from absl.testing import absltest
@@ -94,7 +93,37 @@ class SolutionBaseTest(parameterized.TestCase):
     with self.assertRaisesRegex(error_type, error_message):
       solution_base.SolutionBase(graph_config=config_proto)
 
-  def test_invalid_input_data_type(self):
+  def test_valid_input_data_type_proto(self):
+    text_config = """
+      input_stream: 'input_detections'
+      output_stream: 'output_detections'
+      node {
+        calculator: 'DetectionUniqueIdCalculator'
+        input_stream: 'DETECTION_LIST:input_detections'
+        output_stream: 'DETECTION_LIST:output_detections'
+      }
+    """
+    config_proto = text_format.Parse(text_config,
+                                     calculator_pb2.CalculatorGraphConfig())
+    with solution_base.SolutionBase(graph_config=config_proto) as solution:
+      input_detections = detection_pb2.DetectionList()
+      detection_1 = input_detections.detection.add()
+      text_format.Parse('score: 0.5', detection_1)
+      detection_2 = input_detections.detection.add()
+      text_format.Parse('score: 0.8', detection_2)
+      results = solution.process({'input_detections': input_detections})
+      self.assertTrue(hasattr(results, 'output_detections'))
+      self.assertLen(results.output_detections.detection, 2)
+      expected_detection_1 = detection_pb2.Detection()
+      text_format.Parse('score: 0.5, detection_id: 1', expected_detection_1)
+      expected_detection_2 = detection_pb2.Detection()
+      text_format.Parse('score: 0.8, detection_id: 2', expected_detection_2)
+      self.assertEqual(results.output_detections.detection[0],
+                       expected_detection_1)
+      self.assertEqual(results.output_detections.detection[1],
+                       expected_detection_2)
+
+  def test_invalid_input_data_type_proto_vector(self):
     text_config = """
       input_stream: 'input_detections'
       output_stream: 'output_detections'
@@ -106,14 +135,15 @@ class SolutionBaseTest(parameterized.TestCase):
     """
     config_proto = text_format.Parse(text_config,
                                      calculator_pb2.CalculatorGraphConfig())
-    solution = solution_base.SolutionBase(graph_config=config_proto)
-    detection = detection_pb2.Detection()
-    text_format.Parse('score: 0.5', detection)
-    with self.assertRaisesRegex(
-        NotImplementedError,
-        'SolutionBase can only process image data. PROTO_LIST type is not supported.'
-    ):
-      solution.process({'input_detections': detection})
+    with solution_base.SolutionBase(graph_config=config_proto) as solution:
+      detection = detection_pb2.Detection()
+      text_format.Parse('score: 0.5', detection)
+      with self.assertRaisesRegex(
+          NotImplementedError,
+          'SolutionBase can only process non-audio and non-proto-list data. '
+          + 'PROTO_LIST type is not supported.'
+      ):
+        solution.process({'input_detections': detection})
 
   def test_invalid_input_image_data(self):
     text_config = """
@@ -132,10 +162,10 @@ class SolutionBaseTest(parameterized.TestCase):
     """
     config_proto = text_format.Parse(text_config,
                                      calculator_pb2.CalculatorGraphConfig())
-    solution = solution_base.SolutionBase(graph_config=config_proto)
-    with self.assertRaisesRegex(
-        ValueError, 'Input image must contain three channel rgb data.'):
-      solution.process(np.arange(36, dtype=np.uint8).reshape(3, 3, 4))
+    with solution_base.SolutionBase(graph_config=config_proto) as solution:
+      with self.assertRaisesRegex(
+          ValueError, 'Input image must contain three channel rgb data.'):
+        solution.process(np.arange(36, dtype=np.uint8).reshape(3, 3, 4))
 
   @parameterized.named_parameters(('graph_without_side_packets', """
       input_stream: 'image_in'
@@ -268,20 +298,69 @@ class SolutionBaseTest(parameterized.TestCase):
             'ImageTransformation.output_height': 0
         })
 
+  @parameterized.named_parameters(('graph_without_side_packets', """
+      input_stream: 'image_in'
+      output_stream: 'image_out'
+      node {
+        calculator: 'ImageTransformationCalculator'
+        input_stream: 'IMAGE:image_in'
+        output_stream: 'IMAGE:transformed_image_in'
+      }
+      node {
+        calculator: 'ImageTransformationCalculator'
+        input_stream: 'IMAGE:transformed_image_in'
+        output_stream: 'IMAGE:image_out'
+      }
+      """, None), ('graph_with_side_packets', """
+      input_stream: 'image_in'
+      input_side_packet: 'allow_signal'
+      input_side_packet: 'rotation_degrees'
+      output_stream: 'image_out'
+      node {
+        calculator: 'ImageTransformationCalculator'
+        input_stream: 'IMAGE:image_in'
+        input_side_packet: 'ROTATION_DEGREES:rotation_degrees'
+        output_stream: 'IMAGE:transformed_image_in'
+      }
+      node {
+        calculator: 'GateCalculator'
+        input_stream: 'transformed_image_in'
+        input_side_packet: 'ALLOW:allow_signal'
+        output_stream: 'image_out_to_transform'
+      }
+      node {
+        calculator: 'ImageTransformationCalculator'
+        input_stream: 'IMAGE:image_out_to_transform'
+        input_side_packet: 'ROTATION_DEGREES:rotation_degrees'
+        output_stream: 'IMAGE:image_out'
+      }""", {
+          'allow_signal': True,
+          'rotation_degrees': 0
+      }))
+  def test_solution_reset(self, text_config, side_inputs):
+    config_proto = text_format.Parse(text_config,
+                                     calculator_pb2.CalculatorGraphConfig())
+    input_image = np.arange(27, dtype=np.uint8).reshape(3, 3, 3)
+    with solution_base.SolutionBase(
+        graph_config=config_proto, side_inputs=side_inputs) as solution:
+      for _ in range(20):
+        outputs = solution.process(input_image)
+        self.assertTrue(np.array_equal(input_image, outputs.image_out))
+        solution.reset()
+
   def _process_and_verify(self,
                           config_proto,
                           side_inputs=None,
                           calculator_params=None):
     input_image = np.arange(27, dtype=np.uint8).reshape(3, 3, 3)
-    solution = solution_base.SolutionBase(
+    with solution_base.SolutionBase(
         graph_config=config_proto,
         side_inputs=side_inputs,
-        calculator_params=calculator_params)
-    outputs = solution.process(input_image)
+        calculator_params=calculator_params) as solution:
+      outputs = solution.process(input_image)
+      outputs2 = solution.process({'image_in': input_image})
     self.assertTrue(np.array_equal(input_image, outputs.image_out))
-    outputs2 = solution.process({'image_in': input_image})
     self.assertTrue(np.array_equal(input_image, outputs2.image_out))
-    solution.close()
 
 
 if __name__ == '__main__':

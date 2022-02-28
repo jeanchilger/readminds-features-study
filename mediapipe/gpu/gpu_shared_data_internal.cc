@@ -104,7 +104,7 @@ GpuResources::~GpuResources() {
 #endif
 }
 
-::mediapipe::Status GpuResources::PrepareGpuNode(CalculatorNode* node) {
+absl::Status GpuResources::PrepareGpuNode(CalculatorNode* node) {
   CHECK(node->UsesGpu());
   std::string node_id = node->GetCalculatorState().NodeName();
   std::string node_type = node->GetCalculatorState().CalculatorType();
@@ -112,7 +112,7 @@ GpuResources::~GpuResources() {
 
 #ifndef __EMSCRIPTEN__
   // TODO Allow calculators to request a separate context.
-  // For now, white-list a few calculators to run in their own context.
+  // For now, allow a few calculators to run in their own context.
   bool gets_own_context = (node_type == "ImageFrameToGpuBufferCalculator") ||
                           (node_type == "GpuBufferToImageFrameCalculator") ||
                           (node_type == "GlSurfaceSinkCalculator");

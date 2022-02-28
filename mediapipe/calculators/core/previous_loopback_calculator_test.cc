@@ -39,6 +39,8 @@ using ::testing::Pair;
 using ::testing::Value;
 namespace {
 
+constexpr char kDisallowTag[] = "DISALLOW";
+
 // Returns the timestamp values for a vector of Packets.
 // TODO: puth this kind of test util in a common place.
 std::vector<int64> TimestampValues(const std::vector<Packet>& packets) {
@@ -69,7 +71,7 @@ MATCHER_P2(PairPacket, timestamp, pair, "") {
 TEST(PreviousLoopbackCalculator, CorrectTimestamps) {
   std::vector<Packet> in_prev;
   CalculatorGraphConfig graph_config_ =
-      ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         input_stream: 'in'
         node {
           calculator: 'PreviousLoopbackCalculator'
@@ -93,7 +95,7 @@ TEST(PreviousLoopbackCalculator, CorrectTimestamps) {
           input_stream: 'previous2'
           output_stream: 'pair'
         }
-      )");
+      )pb");
   tool::AddVectorSink("pair", &graph_config_, &in_prev);
 
   CalculatorGraph graph_;
@@ -136,27 +138,27 @@ TEST(PreviousLoopbackCalculator, CorrectTimestamps) {
 // A Calculator that outputs a summary packet in CalculatorBase::Close().
 class PacketOnCloseCalculator : public CalculatorBase {
  public:
-  static ::mediapipe::Status GetContract(CalculatorContract* cc) {
+  static absl::Status GetContract(CalculatorContract* cc) {
     cc->Inputs().Index(0).Set<int>();
     cc->Outputs().Index(0).Set<int>();
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
-  ::mediapipe::Status Open(CalculatorContext* cc) final {
+  absl::Status Open(CalculatorContext* cc) final {
     cc->SetOffset(TimestampDiff(0));
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
-  ::mediapipe::Status Process(CalculatorContext* cc) final {
+  absl::Status Process(CalculatorContext* cc) final {
     sum_ += cc->Inputs().Index(0).Value().Get<int>();
     cc->Outputs().Index(0).AddPacket(cc->Inputs().Index(0).Value());
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
-  ::mediapipe::Status Close(CalculatorContext* cc) final {
+  absl::Status Close(CalculatorContext* cc) final {
     cc->Outputs().Index(0).AddPacket(
         MakePacket<int>(sum_).At(Timestamp::Max()));
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
  private:
@@ -169,7 +171,7 @@ REGISTER_CALCULATOR(PacketOnCloseCalculator);
 TEST(PreviousLoopbackCalculator, ClosesCorrectly) {
   std::vector<Packet> outputs;
   CalculatorGraphConfig graph_config_ =
-      ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         input_stream: 'in'
         node {
           calculator: 'PreviousLoopbackCalculator'
@@ -192,7 +194,7 @@ TEST(PreviousLoopbackCalculator, ClosesCorrectly) {
           input_stream: 'out'
           output_stream: 'close_out'
         }
-      )");
+      )pb");
   tool::AddVectorSink("close_out", &graph_config_, &outputs);
 
   CalculatorGraph graph_;
@@ -231,7 +233,7 @@ TEST(PreviousLoopbackCalculator, ClosesCorrectly) {
 TEST(PreviousLoopbackCalculator, ProcessesMaxTimestamp) {
   std::vector<Packet> out_and_previous_packets;
   CalculatorGraphConfig graph_config =
-      ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         input_stream: 'in'
         node {
           calculator: 'PreviousLoopbackCalculator'
@@ -253,7 +255,7 @@ TEST(PreviousLoopbackCalculator, ProcessesMaxTimestamp) {
           input_stream: 'previous'
           output_stream: 'out_and_previous'
         }
-      )");
+      )pb");
   tool::AddVectorSink("out_and_previous", &graph_config,
                       &out_and_previous_packets);
 
@@ -278,7 +280,7 @@ TEST(PreviousLoopbackCalculator, ProcessesMaxTimestamp) {
 TEST(PreviousLoopbackCalculator, ProcessesMaxTimestampNonEmptyPrevious) {
   std::vector<Packet> out_and_previous_packets;
   CalculatorGraphConfig graph_config =
-      ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         input_stream: 'in'
         node {
           calculator: 'PreviousLoopbackCalculator'
@@ -300,7 +302,7 @@ TEST(PreviousLoopbackCalculator, ProcessesMaxTimestampNonEmptyPrevious) {
           input_stream: 'previous'
           output_stream: 'out_and_previous'
         }
-      )");
+      )pb");
   tool::AddVectorSink("out_and_previous", &graph_config,
                       &out_and_previous_packets);
 
@@ -331,7 +333,7 @@ TEST(PreviousLoopbackCalculator, ProcessesMaxTimestampNonEmptyPrevious) {
 TEST(PreviousLoopbackCalculator, EmptyLoopForever) {
   std::vector<Packet> outputs;
   CalculatorGraphConfig graph_config_ =
-      ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+      ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
         input_stream: 'in'
         node {
           calculator: 'PreviousLoopbackCalculator'
@@ -354,7 +356,7 @@ TEST(PreviousLoopbackCalculator, EmptyLoopForever) {
           input_stream: 'out'
           output_stream: 'close_out'
         }
-      )");
+      )pb");
   tool::AddVectorSink("close_out", &graph_config_, &outputs);
 
   CalculatorGraph graph_;
@@ -386,7 +388,7 @@ class PreviousLoopbackCalculatorProcessingTimestampsTest
  protected:
   void SetUp() override {
     CalculatorGraphConfig graph_config =
-        ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+        ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
           input_stream: 'input'
           input_stream: 'force_main_empty'
           input_stream: 'force_loop_empty'
@@ -424,7 +426,7 @@ class PreviousLoopbackCalculatorProcessingTimestampsTest
             input_stream: 'passed_through_prev_loop'
             output_stream: 'passed_through_input_and_prev_loop'
           }
-        )");
+        )pb");
     tool::AddVectorSink("passed_through_input_and_prev_loop", &graph_config,
                         &output_packets_);
     MP_ASSERT_OK(graph_.Initialize(graph_config, {}));
@@ -700,19 +702,19 @@ TEST_F(PreviousLoopbackCalculatorProcessingTimestampsTest,
 // Similar to GateCalculator, but it doesn't propagate timestamp bound updates.
 class DroppingGateCalculator : public CalculatorBase {
  public:
-  static ::mediapipe::Status GetContract(CalculatorContract* cc) {
+  static absl::Status GetContract(CalculatorContract* cc) {
     cc->Inputs().Index(0).SetAny();
-    cc->Inputs().Tag("DISALLOW").Set<bool>();
+    cc->Inputs().Tag(kDisallowTag).Set<bool>();
     cc->Outputs().Index(0).SetSameAs(&cc->Inputs().Index(0));
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
-  ::mediapipe::Status Process(CalculatorContext* cc) final {
+  absl::Status Process(CalculatorContext* cc) final {
     if (!cc->Inputs().Index(0).IsEmpty() &&
-        !cc->Inputs().Tag("DISALLOW").Get<bool>()) {
+        !cc->Inputs().Tag(kDisallowTag).Get<bool>()) {
       cc->Outputs().Index(0).AddPacket(cc->Inputs().Index(0).Value());
     }
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 };
 REGISTER_CALCULATOR(DroppingGateCalculator);
@@ -724,7 +726,7 @@ class PreviousLoopbackCalculatorDelayBehaviorTest : public testing::Test {
  protected:
   void SetUp() override {
     CalculatorGraphConfig graph_config =
-        ParseTextProtoOrDie<CalculatorGraphConfig>(R"(
+        ParseTextProtoOrDie<CalculatorGraphConfig>(R"pb(
           input_stream: 'input'
           # Drops "loop" when set to "true", delaying output of prev_loop, hence
           # delaying output of the graph.
@@ -755,7 +757,7 @@ class PreviousLoopbackCalculatorDelayBehaviorTest : public testing::Test {
             input_stream: 'passed_through_prev_loop'
             output_stream: 'passed_through_input_and_prev_loop'
           }
-        )");
+        )pb");
     tool::AddVectorSink("passed_through_input_and_prev_loop", &graph_config,
                         &output_packets_);
     MP_ASSERT_OK(graph_.Initialize(graph_config, {}));

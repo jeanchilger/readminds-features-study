@@ -14,28 +14,31 @@
 
 #include "mediapipe/util/resource_util.h"
 
-#include "absl/flags/flag.h"
+#include <iostream>
+
 #include "absl/strings/str_split.h"
 #include "mediapipe/framework/deps/file_path.h"
 #include "mediapipe/framework/port/file_helpers.h"
 #include "mediapipe/framework/port/ret_check.h"
-
-ABSL_FLAG(
-    std::string, resource_root_dir, "",
-    "The absolute path to the resource directory."
-    "If specified, resource_root_dir will be prepended to the original path.");
+#include "mediapipe/util/resource_util_custom.h"
+#include "mediapipe/util/resource_util_internal.h"
 
 namespace mediapipe {
 
-::mediapipe::StatusOr<std::string> PathToResourceAsFile(
-    const std::string& path) {
-  return ::mediapipe::file::JoinPath(FLAGS_resource_root_dir.CurrentValue(),
-                                     path);
+namespace {
+ResourceProviderFn resource_provider_ = nullptr;
+}  // namespace
+
+absl::Status GetResourceContents(const std::string& path, std::string* output,
+                                 bool read_as_binary) {
+  if (resource_provider_) {
+    return resource_provider_(path, output);
+  }
+  return internal::DefaultGetResourceContents(path, output, read_as_binary);
 }
 
-::mediapipe::Status GetResourceContents(const std::string& path,
-                                        std::string* output) {
-  return mediapipe::file::GetContents(path, output);
+void SetCustomGlobalResourceProvider(ResourceProviderFn fn) {
+  resource_provider_ = std::move(fn);
 }
 
 }  // namespace mediapipe

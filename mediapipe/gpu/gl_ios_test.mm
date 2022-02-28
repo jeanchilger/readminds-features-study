@@ -98,7 +98,7 @@
 
 - (void)testGlConverters {
   CFHolder<CVPixelBufferRef> originalPixelBuffer;
-  ::mediapipe::Status status =
+  absl::Status status =
       CreateCVPixelBufferFromCGImage([_sourceImage CGImage], &originalPixelBuffer);
   XCTAssert(status.ok());
 
@@ -121,7 +121,7 @@
 
 - (void)testGlConvertersNoOpInserted {
   CFHolder<CVPixelBufferRef> originalPixelBuffer;
-  ::mediapipe::Status status =
+  absl::Status status =
       CreateCVPixelBufferFromCGImage([_sourceImage CGImage], &originalPixelBuffer);
   XCTAssert(status.ok());
 
@@ -149,7 +149,7 @@
 
 - (void)testGlConvertersWithOptionalSidePackets {
   CFHolder<CVPixelBufferRef> originalPixelBuffer;
-  ::mediapipe::Status status =
+  absl::Status status =
       CreateCVPixelBufferFromCGImage([_sourceImage CGImage], &originalPixelBuffer);
   XCTAssert(status.ok());
 
@@ -175,23 +175,21 @@
   mediapipe::GlCalculatorHelper helper;
   helper.InitializeForTest(&gpuData);
 
-  std::vector<std::pair<int, int>> sizes{
-    {200, 300},
-    {200, 299},
-    {196, 300},
-    {194, 300},
-    {193, 300},
-  };
-  for (const auto& width_height : sizes) {
-    mediapipe::GlTexture texture =
-        helper.CreateDestinationTexture(width_height.first, width_height.second);
-    XCTAssertNotEqual(texture.name(), 0);
-  }
+  helper.RunInGlContext([&helper] {
+    std::vector<std::pair<int, int>> sizes{
+        {200, 300}, {200, 299}, {196, 300}, {194, 300}, {193, 300},
+    };
+    for (const auto& width_height : sizes) {
+      mediapipe::GlTexture texture =
+          helper.CreateDestinationTexture(width_height.first, width_height.second);
+      XCTAssertNotEqual(texture.name(), 0);
+    }
+  });
 }
 
 - (void)testSimpleConversionFromFormat:(OSType)cvPixelFormat {
   CFHolder<CVPixelBufferRef> originalPixelBuffer;
-  ::mediapipe::Status status =
+  absl::Status status =
       CreateCVPixelBufferFromCGImage([_sourceImage CGImage], &originalPixelBuffer);
   XCTAssert(status.ok());
   CVPixelBufferRef convertedPixelBuffer =
@@ -225,7 +223,7 @@
   NSLog(@"Metal tests skipped on Simulator.");
 #else
   CFHolder<CVPixelBufferRef> originalPixelBuffer;
-  ::mediapipe::Status status =
+  absl::Status status =
       CreateCVPixelBufferFromCGImage([_sourceImage CGImage], &originalPixelBuffer);
   XCTAssert(status.ok());
   CVPixelBufferRef redPixelBuffer = [self redPixelBuffer:*originalPixelBuffer];

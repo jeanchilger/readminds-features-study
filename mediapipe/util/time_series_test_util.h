@@ -25,7 +25,6 @@
 #include "absl/strings/substitute.h"
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/calculator_runner.h"
-#include "mediapipe/framework/deps/message_matchers.h"
 #include "mediapipe/framework/formats/matrix.h"
 #include "mediapipe/framework/formats/time_series_header.pb.h"
 #include "mediapipe/framework/port/gmock.h"
@@ -308,7 +307,7 @@ class TimeSeriesCalculatorTest : public ::testing::Test {
     AppendInputPacket(payload, Timestamp(timestamp), input_tag);
   }
 
-  ::mediapipe::Status RunGraph() { return runner_->Run(); }
+  absl::Status RunGraph() { return runner_->Run(); }
 
   bool HasInputHeader(const size_t input_index = 0) const {
     return input(input_index)

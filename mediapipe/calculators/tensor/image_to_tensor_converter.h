@@ -16,8 +16,8 @@
 #define MEDIAPIPE_CALCULATORS_TENSOR_IMAGE_TO_TENSOR_CONVERTER_H_
 
 #include "mediapipe/calculators/tensor/image_to_tensor_utils.h"
+#include "mediapipe/framework/formats/image.h"
 #include "mediapipe/framework/formats/tensor.h"
-#include "mediapipe/framework/packet.h"
 #include "mediapipe/framework/port/statusor.h"
 
 namespace mediapipe {
@@ -27,25 +27,28 @@ struct Size {
   int height;
 };
 
+// Pixel extrapolation method.
+// When converting image to tensor it may happen that tensor needs to read
+// pixels outside image boundaries. Border mode helps to specify how such pixels
+// will be calculated.
+enum class BorderMode { kZero, kReplicate };
+
 // Converts image to tensor.
 class ImageToTensorConverter {
  public:
   virtual ~ImageToTensorConverter() = default;
 
-  virtual Size GetImageSize(const Packet& image_packet) = 0;
-
   // Converts image to tensor.
-  // @image_packet contains image to extract from.
+  // @image contains image to extract from.
   // @roi describes region of interest within the image to extract (absolute
   // values).
   // @output_dims dimensions of output tensor.
   // @range_min/max describes output tensor range image pixels should converted
   // to.
-  virtual ::mediapipe::StatusOr<Tensor> Convert(const Packet& image_packet,
-                                                const RotatedRect& roi,
-                                                const Size& output_dims,
-                                                float range_min,
-                                                float range_max) = 0;
+  virtual absl::StatusOr<Tensor> Convert(const mediapipe::Image& input,
+                                         const RotatedRect& roi,
+                                         const Size& output_dims,
+                                         float range_min, float range_max) = 0;
 };
 
 }  // namespace mediapipe

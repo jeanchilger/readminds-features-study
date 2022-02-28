@@ -34,10 +34,12 @@ cc_library(
     hdrs = ["cpu_op_resolver.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/port:logging",
+        "//mediapipe/util/tflite/operations:landmarks_to_transform_matrix",
         "//mediapipe/util/tflite/operations:max_pool_argmax",
         "//mediapipe/util/tflite/operations:max_unpooling",
+        "//mediapipe/util/tflite/operations:transform_landmarks",
+        "//mediapipe/util/tflite/operations:transform_tensor_bilinear",
         "//mediapipe/util/tflite/operations:transpose_conv_bias",
         "@org_tensorflow//tensorflow/lite:builtin_op_data",
         "@org_tensorflow//tensorflow/lite:framework",
@@ -81,7 +83,7 @@ cc_library(
             "@org_tensorflow//tensorflow/lite:framework",
             "@org_tensorflow//tensorflow/lite/delegates/gpu:api",
             "@org_tensorflow//tensorflow/lite/delegates/gpu/common:model",
-            "@org_tensorflow//tensorflow/lite/delegates/gpu/common/testing:tflite_model_reader",
+            "@org_tensorflow//tensorflow/lite/delegates/gpu/common:model_builder",
             "@org_tensorflow//tensorflow/lite/delegates/gpu/gl:api2",
         ],
         "//mediapipe:android": [
@@ -93,8 +95,22 @@ cc_library(
             "@org_tensorflow//tensorflow/lite/delegates/gpu:api",
             "@org_tensorflow//tensorflow/lite/delegates/gpu/cl:api",
             "@org_tensorflow//tensorflow/lite/delegates/gpu/common:model",
-            "@org_tensorflow//tensorflow/lite/delegates/gpu/common/testing:tflite_model_reader",
+            "@org_tensorflow//tensorflow/lite/delegates/gpu/common:model_builder",
             "@org_tensorflow//tensorflow/lite/delegates/gpu/gl:api2",
         ],
     }) + ["@org_tensorflow//tensorflow/lite/core/api"],
+)
+
+cc_library(
+    name = "tflite_model_loader",
+    srcs = ["tflite_model_loader.cc"],
+    hdrs = ["tflite_model_loader.h"],
+    deps = [
+        "//mediapipe/framework/api2:packet",
+        "//mediapipe/framework/port:ret_check",
+        "//mediapipe/framework/port:status",
+        "//mediapipe/framework/port:statusor",
+        "//mediapipe/util:resource_util",
+        "@org_tensorflow//tensorflow/lite:framework",
+    ],
 )

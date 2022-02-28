@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """MediaPipe Hands."""
 
 import enum
@@ -21,6 +20,7 @@ from typing import NamedTuple
 import numpy as np
 
 # pylint: disable=unused-import
+from mediapipe.calculators.core import constant_side_packet_calculator_pb2
 from mediapipe.calculators.core import gate_calculator_pb2
 from mediapipe.calculators.core import split_vector_calculator_pb2
 from mediapipe.calculators.tensor import image_to_tensor_calculator_pb2
@@ -37,6 +37,9 @@ from mediapipe.calculators.util import rect_transformation_calculator_pb2
 from mediapipe.calculators.util import thresholding_calculator_pb2
 # pylint: enable=unused-import
 from mediapipe.python.solution_base import SolutionBase
+# pylint: disable=unused-import
+from mediapipe.python.solutions.hands_connections import HAND_CONNECTIONS
+# pylint: enable=unused-import
 
 
 class HandLandmark(enum.IntEnum):
@@ -64,30 +67,7 @@ class HandLandmark(enum.IntEnum):
   PINKY_TIP = 20
 
 
-BINARYPB_FILE_PATH = 'mediapipe/modules/hand_landmark/hand_landmark_tracking_cpu.binarypb'
-HAND_CONNECTIONS = frozenset([
-    (HandLandmark.WRIST, HandLandmark.THUMB_CMC),
-    (HandLandmark.THUMB_CMC, HandLandmark.THUMB_MCP),
-    (HandLandmark.THUMB_MCP, HandLandmark.THUMB_IP),
-    (HandLandmark.THUMB_IP, HandLandmark.THUMB_TIP),
-    (HandLandmark.WRIST, HandLandmark.INDEX_FINGER_MCP),
-    (HandLandmark.INDEX_FINGER_MCP, HandLandmark.INDEX_FINGER_PIP),
-    (HandLandmark.INDEX_FINGER_PIP, HandLandmark.INDEX_FINGER_DIP),
-    (HandLandmark.INDEX_FINGER_DIP, HandLandmark.INDEX_FINGER_TIP),
-    (HandLandmark.INDEX_FINGER_MCP, HandLandmark.MIDDLE_FINGER_MCP),
-    (HandLandmark.MIDDLE_FINGER_MCP, HandLandmark.MIDDLE_FINGER_PIP),
-    (HandLandmark.MIDDLE_FINGER_PIP, HandLandmark.MIDDLE_FINGER_DIP),
-    (HandLandmark.MIDDLE_FINGER_DIP, HandLandmark.MIDDLE_FINGER_TIP),
-    (HandLandmark.MIDDLE_FINGER_MCP, HandLandmark.RING_FINGER_MCP),
-    (HandLandmark.RING_FINGER_MCP, HandLandmark.RING_FINGER_PIP),
-    (HandLandmark.RING_FINGER_PIP, HandLandmark.RING_FINGER_DIP),
-    (HandLandmark.RING_FINGER_DIP, HandLandmark.RING_FINGER_TIP),
-    (HandLandmark.RING_FINGER_MCP, HandLandmark.PINKY_MCP),
-    (HandLandmark.WRIST, HandLandmark.PINKY_MCP),
-    (HandLandmark.PINKY_MCP, HandLandmark.PINKY_PIP),
-    (HandLandmark.PINKY_PIP, HandLandmark.PINKY_DIP),
-    (HandLandmark.PINKY_DIP, HandLandmark.PINKY_TIP)
-])
+_BINARYPB_FILE_PATH = 'mediapipe/modules/hand_landmark/hand_landmark_tracking_cpu.binarypb'
 
 
 class Hands(SolutionBase):
@@ -102,103 +82,41 @@ class Hands(SolutionBase):
   horizontally. If that is not the case, use, for instance, cv2.flip(image, 1)
   to flip the image first for a correct handedness output.
 
-  Usage examples:
-    import cv2
-    import mediapipe as mp
-    mp_drawing = mp.solutions.drawing_utils
-    mp_hands = mp.solutions.hands
-
-    # For static images:
-    hands = mp_hands.Hands(
-        static_image_mode=True,
-        max_num_hands=2,
-        min_detection_confidence=0.7)
-    for idx, file in enumerate(file_list):
-      # Read an image, flip it around y-axis for correct handedness output (see
-      # above).
-      image = cv2.flip(cv2.imread(file), 1)
-      # Convert the BGR image to RGB before processing.
-      results = hands.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-
-      # Print handedness and draw hand landmarks on the image.
-      print('handedness:', results.multi_handedness)
-      if not results.multi_hand_landmarks:
-        continue
-      annotated_image = image.copy()
-      for hand_landmarks in results.multi_hand_landmarks:
-        print('hand_landmarks:', hand_landmarks)
-        mp_drawing.draw_landmarks(
-            annotated_image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-      cv2.imwrite(
-          '/tmp/annotated_image' + str(idx) + '.png', cv2.flip(image, 1))
-    hands.close()
-
-    # For webcam input:
-    hands = mp_hands.Hands(
-        min_detection_confidence=0.7, min_tracking_confidence=0.5)
-    cap = cv2.VideoCapture(0)
-    while cap.isOpened():
-      success, image = cap.read()
-      if not success:
-        break
-
-      # Flip the image horizontally for a later selfie-view display, and convert
-      # the BGR image to RGB.
-      image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
-      # To improve performance, optionally mark the image as not writeable to
-      # pass by reference.
-      image.flags.writeable = False
-      results = hands.process(image)
-
-      # Draw the hand annotations on the image.
-      image.flags.writeable = True
-      image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-      if results.multi_hand_landmarks:
-        for hand_landmarks in results.multi_hand_landmarks:
-          mp_drawing.draw_landmarks(
-              image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-      cv2.imshow('MediaPipe Hands', image)
-      if cv2.waitKey(5) & 0xFF == 27:
-        break
-    hands.close()
-    cap.release()
+  Please refer to https://solutions.mediapipe.dev/hands#python-solution-api for
+  usage examples.
   """
 
   def __init__(self,
                static_image_mode=False,
                max_num_hands=2,
-               min_detection_confidence=0.7,
+               model_complexity=1,
+               min_detection_confidence=0.5,
                min_tracking_confidence=0.5):
     """Initializes a MediaPipe Hand object.
 
     Args:
-      static_image_mode: If set to False, the solution treats the input images
-        as a video stream. It will try to detect hands in the first input
-        images, and upon a successful detection further localizes the hand
-        landmarks. In subsequent images, once all "max_num_hands" hands are
-        detected and the corresponding hand landmarks are localized, it simply
-        tracks those landmarks without invoking another detection until it loses
-        track of any of the hands. This reduces latency and is ideal for
-        processing video frames. If set to True, hand detection runs on every
-        input image, ideal for processing a batch of static, possibly unrelated,
-        images. Default to False.
-      max_num_hands: Maximum number of hands to detect. Default to 2.
-      min_detection_confidence: Minimum confidence value ([0.0, 1.0]) from the
-        hand detection model for the detection to be considered successful.
-        Default to 0.7.
-      min_tracking_confidence: Minimum confidence value ([0.0, 1.0]) from the
-        landmark-tracking model for the hand landmarks to be considered tracked
-        successfully, or otherwise hand detection will be invoked automatically
-        on the next input image. Setting it to a higher value can increase
-        robustness of the solution, at the expense of a higher latency. Ignored
-        if "static_image_mode" is True, where hand detection simply runs on
-        every image. Default to 0.5.
+      static_image_mode: Whether to treat the input images as a batch of static
+        and possibly unrelated images, or a video stream. See details in
+        https://solutions.mediapipe.dev/hands#static_image_mode.
+      max_num_hands: Maximum number of hands to detect. See details in
+        https://solutions.mediapipe.dev/hands#max_num_hands.
+      model_complexity: Complexity of the hand landmark model: 0 or 1.
+        Landmark accuracy as well as inference latency generally go up with the
+        model complexity. See details in
+        https://solutions.mediapipe.dev/hands#model_complexity.
+      min_detection_confidence: Minimum confidence value ([0.0, 1.0]) for hand
+        detection to be considered successful. See details in
+        https://solutions.mediapipe.dev/hands#min_detection_confidence.
+      min_tracking_confidence: Minimum confidence value ([0.0, 1.0]) for the
+        hand landmarks to be considered tracked successfully. See details in
+        https://solutions.mediapipe.dev/hands#min_tracking_confidence.
     """
     super().__init__(
-        binary_graph_path=BINARYPB_FILE_PATH,
+        binary_graph_path=_BINARYPB_FILE_PATH,
         side_inputs={
+            'model_complexity': model_complexity,
             'num_hands': max_num_hands,
-            'can_skip_detection': not static_image_mode,
+            'use_prev_landmarks': not static_image_mode,
         },
         calculator_params={
             'palmdetectioncpu__TensorsToDetectionsCalculator.min_score_thresh':
@@ -206,7 +124,10 @@ class Hands(SolutionBase):
             'handlandmarkcpu__ThresholdingCalculator.threshold':
                 min_tracking_confidence,
         },
-        outputs=['multi_hand_landmarks', 'multi_handedness'])
+        outputs=[
+            'multi_hand_landmarks', 'multi_hand_world_landmarks',
+            'multi_handedness'
+        ])
 
   def process(self, image: np.ndarray) -> NamedTuple:
     """Processes an RGB image and returns the hand landmarks and handedness of each detected hand.
@@ -215,14 +136,18 @@ class Hands(SolutionBase):
       image: An RGB image represented as a numpy ndarray.
 
     Raises:
-      RuntimeError: If the underlying graph occurs any error.
+      RuntimeError: If the underlying graph throws any error.
       ValueError: If the input image is not three channel RGB.
 
     Returns:
-      A NamedTuple object with two fields: a "multi_hand_landmarks" field that
-      contains the hand landmarks on each detected hand and a "multi_handedness"
-      field that contains the handedness (left v.s. right hand) of the detected
-      hand.
+      A NamedTuple object with the following fields:
+        1) a "multi_hand_landmarks" field that contains the hand landmarks on
+           each detected hand.
+        2) a "multi_hand_world_landmarks" field that contains the hand landmarks
+           on each detected hand in real-world 3D coordinates that are in meters
+           with the origin at the hand's approximate geometric center.
+        3) a "multi_handedness" field that contains the handedness (left v.s.
+           right hand) of the detected hand.
     """
 
     return super().process(input_data={'image': image})

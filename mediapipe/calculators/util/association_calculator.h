@@ -26,19 +26,9 @@
 #include "mediapipe/framework/port/canonical_errors.h"
 #include "mediapipe/framework/port/rectangle.h"
 #include "mediapipe/framework/port/status.h"
+#include "mediapipe/util/rectangle_util.h"
 
 namespace mediapipe {
-
-// Computes the overlap similarity based on Intersection over Union (IoU) of
-// two rectangles.
-inline float OverlapSimilarity(const Rectangle_f& rect1,
-                               const Rectangle_f& rect2) {
-  if (!rect1.Intersects(rect2)) return 0.0f;
-  // Compute IoU similarity score.
-  const float intersection_area = Rectangle_f(rect1).Intersect(rect2).Area();
-  const float normalization = rect1.Area() + rect2.Area() - intersection_area;
-  return normalization > 0.0f ? intersection_area / normalization : 0.0f;
-}
 
 // AssocationCalculator<T> accepts multiple inputs of vectors of type T that can
 // be converted to Rectangle_f. The output is a vector of type T that contains
@@ -56,7 +46,7 @@ inline float OverlapSimilarity(const Rectangle_f& rect1,
 template <typename T>
 class AssociationCalculator : public CalculatorBase {
  public:
-  static ::mediapipe::Status GetContract(CalculatorContract* cc) {
+  static absl::Status GetContract(CalculatorContract* cc) {
     // Atmost one input stream can be tagged with "PREV".
     RET_CHECK_LE(cc->Inputs().NumEntries("PREV"), 1);
 
@@ -71,10 +61,10 @@ class AssociationCalculator : public CalculatorBase {
 
     cc->Outputs().Index(0).Set<std::vector<T>>();
 
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
-  ::mediapipe::Status Open(CalculatorContext* cc) override {
+  absl::Status Open(CalculatorContext* cc) override {
     cc->SetOffset(TimestampDiff(0));
 
     has_prev_input_stream_ = cc->Inputs().HasTag("PREV");
@@ -84,15 +74,15 @@ class AssociationCalculator : public CalculatorBase {
     options_ = cc->Options<::mediapipe::AssociationCalculatorOptions>();
     CHECK_GE(options_.min_similarity_threshold(), 0);
 
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
-  ::mediapipe::Status Process(CalculatorContext* cc) override {
+  absl::Status Process(CalculatorContext* cc) override {
     auto get_non_overlapping_elements = GetNonOverlappingElements(cc);
     if (!get_non_overlapping_elements.ok()) {
       return get_non_overlapping_elements.status();
     }
-    std::list<T> result = get_non_overlapping_elements.ValueOrDie();
+    std::list<T> result = get_non_overlapping_elements.value();
 
     if (has_prev_input_stream_ &&
         !cc->Inputs().Get(prev_input_stream_id_).IsEmpty()) {
@@ -114,7 +104,7 @@ class AssociationCalculator : public CalculatorBase {
     }
     cc->Outputs().Index(0).Add(output.release(), cc->InputTimestamp());
 
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
  protected:
@@ -123,8 +113,8 @@ class AssociationCalculator : public CalculatorBase {
   bool has_prev_input_stream_;
   CollectionItemId prev_input_stream_id_;
 
-  virtual ::mediapipe::StatusOr<Rectangle_f> GetRectangle(const T& input) {
-    return ::mediapipe::OkStatus();
+  virtual absl::StatusOr<Rectangle_f> GetRectangle(const T& input) {
+    return absl::OkStatus();
   }
 
   virtual std::pair<bool, int> GetId(const T& input) { return {false, -1}; }
@@ -134,7 +124,7 @@ class AssociationCalculator : public CalculatorBase {
  private:
   // Get a list of non-overlapping elements from all input streams, with
   // increasing order of priority based on input stream index.
-  mediapipe::StatusOr<std::list<T>> GetNonOverlappingElements(
+  absl::StatusOr<std::list<T>> GetNonOverlappingElements(
       CalculatorContext* cc) {
     std::list<T> result;
 
@@ -176,7 +166,7 @@ class AssociationCalculator : public CalculatorBase {
     return result;
   }
 
-  ::mediapipe::Status AddElementToList(T element, std::list<T>* current) {
+  absl::Status AddElementToList(T element, std::list<T>* current) {
     // Compare this element with elements of the input collection. If this
     // element has high overlap with elements of the collection, remove
     // those elements from the collection and add this element.
@@ -187,7 +177,7 @@ class AssociationCalculator : public CalculatorBase {
 
     for (auto uit = current->begin(); uit != current->end();) {
       ASSIGN_OR_RETURN(auto prev_rect, GetRectangle(*uit));
-      if (OverlapSimilarity(cur_rect, prev_rect) >
+      if (CalculateIou(cur_rect, prev_rect) >
           options_.min_similarity_threshold()) {
         std::pair<bool, int> prev_id = GetId(*uit);
         // If prev_id.first is false when some element doesn't have an ID,
@@ -207,20 +197,20 @@ class AssociationCalculator : public CalculatorBase {
     }
     current->push_back(element);
 
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 
   // Compare elements of the current list with elements in from the collection
   // of elements from the previous input stream, and propagate IDs from the
   // previous input stream as appropriate.
-  ::mediapipe::Status PropagateIdsFromPreviousToCurrent(
+  absl::Status PropagateIdsFromPreviousToCurrent(
       const std::vector<T>& prev_input_vec, std::list<T>* current) {
     for (auto vit = current->begin(); vit != current->end(); ++vit) {
       auto get_cur_rectangle = GetRectangle(*vit);
       if (!get_cur_rectangle.ok()) {
         return get_cur_rectangle.status();
       }
-      const Rectangle_f& cur_rect = get_cur_rectangle.ValueOrDie();
+      const Rectangle_f& cur_rect = get_cur_rectangle.value();
 
       bool change_id = false;
       int id_for_vi = -1;
@@ -230,9 +220,9 @@ class AssociationCalculator : public CalculatorBase {
         if (!get_prev_rectangle.ok()) {
           return get_prev_rectangle.status();
         }
-        const Rectangle_f& prev_rect = get_prev_rectangle.ValueOrDie();
+        const Rectangle_f& prev_rect = get_prev_rectangle.value();
 
-        if (OverlapSimilarity(cur_rect, prev_rect) >
+        if (CalculateIou(cur_rect, prev_rect) >
             options_.min_similarity_threshold()) {
           std::pair<bool, int> prev_id = GetId(prev_input_vec[ui]);
           // If prev_id.first is false when some element doesn't have an ID,
@@ -250,7 +240,7 @@ class AssociationCalculator : public CalculatorBase {
         *vit = element;
       }
     }
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   }
 };
 

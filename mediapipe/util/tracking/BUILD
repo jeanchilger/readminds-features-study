@@ -290,7 +290,7 @@ cc_library(
         "//mediapipe/framework/port:vector",
         "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/strings:str_format",
-        "@eigen_archive//:eigen",
+        "@eigen_archive//:eigen3",
     ],
 )
 
@@ -319,6 +319,7 @@ cc_library(
         "//mediapipe/framework/port:logging",
         "//mediapipe/framework/port:vector",
         "@com_google_absl//absl/container:node_hash_map",
+        "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -428,7 +429,7 @@ cc_library(
         "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/strings",
-        "@eigen_archive//:eigen",
+        "@eigen_archive//:eigen3",
     ],
 )
 
@@ -522,9 +523,10 @@ cc_library(
         "//mediapipe/framework/port:opencv_imgproc",
         "//mediapipe/framework/port:opencv_video",
         "//mediapipe/framework/port:vector",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/memory",
-        "@eigen_archive//:eigen",
+        "@eigen_archive//:eigen3",
     ],
 )
 
@@ -622,7 +624,7 @@ cc_library(
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/memory",
-        "@eigen_archive//:eigen",
+        "@eigen_archive//:eigen3",
     ],
     alwayslink = 1,
 )
@@ -714,7 +716,6 @@ cc_test(
     deps = [
         ":motion_estimation",
         ":motion_models",
-        "//mediapipe/framework/deps:message_matchers",
         "//mediapipe/framework/port:gtest_main",
         "//mediapipe/framework/port:parse_text_proto",
         "//mediapipe/framework/port:vector",
@@ -733,7 +734,6 @@ cc_test(
         ":region_flow_cc_proto",
         ":region_flow_computation",
         "//mediapipe/framework/deps:file_path",
-        "//mediapipe/framework/port:commandlineflags",
         "//mediapipe/framework/port:file_helpers",
         "//mediapipe/framework/port:gtest_main",
         "//mediapipe/framework/port:logging",
@@ -742,6 +742,7 @@ cc_test(
         "//mediapipe/framework/port:opencv_imgproc",
         "//mediapipe/framework/port:status",
         "//mediapipe/framework/port:vector",
+        "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/time",
     ],
 )
@@ -755,6 +756,7 @@ cc_test(
         ":box_tracker",
         "//mediapipe/framework/deps:file_path",
         "//mediapipe/framework/port:gtest_main",
+        "@com_google_absl//absl/flags:flag",
     ],
 )
 

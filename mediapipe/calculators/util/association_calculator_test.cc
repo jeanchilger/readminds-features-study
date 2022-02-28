@@ -16,7 +16,6 @@
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/calculator_runner.h"
 #include "mediapipe/framework/collection_item_id.h"
-#include "mediapipe/framework/deps/message_matchers.h"
 #include "mediapipe/framework/formats/detection.pb.h"
 #include "mediapipe/framework/formats/location_data.pb.h"
 #include "mediapipe/framework/formats/rect.pb.h"
@@ -97,7 +96,7 @@ class AssociationDetectionCalculatorTest : public ::testing::Test {
 };
 
 TEST_F(AssociationDetectionCalculatorTest, DetectionAssocTest) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "AssociationDetectionCalculator"
     input_stream: "input_vec_0"
     input_stream: "input_vec_1"
@@ -108,7 +107,7 @@ TEST_F(AssociationDetectionCalculatorTest, DetectionAssocTest) {
         min_similarity_threshold: 0.1
       }
     }
-  )"));
+  )pb"));
 
   // Input Stream 0: det_0, det_1, det_2.
   auto input_vec_0 = absl::make_unique<std::vector<::mediapipe::Detection>>();
@@ -160,7 +159,7 @@ TEST_F(AssociationDetectionCalculatorTest, DetectionAssocTest) {
 }
 
 TEST_F(AssociationDetectionCalculatorTest, DetectionAssocTestWithPrev) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "AssociationDetectionCalculator"
     input_stream: "PREV:input_vec_0"
     input_stream: "input_vec_1"
@@ -170,7 +169,7 @@ TEST_F(AssociationDetectionCalculatorTest, DetectionAssocTestWithPrev) {
         min_similarity_threshold: 0.1
       }
     }
-  )"));
+  )pb"));
 
   // Input Stream 0: det_3, det_4.
   auto input_vec_0 = absl::make_unique<std::vector<::mediapipe::Detection>>();
@@ -209,7 +208,7 @@ TEST_F(AssociationDetectionCalculatorTest, DetectionAssocTestWithPrev) {
 }
 
 TEST_F(AssociationDetectionCalculatorTest, DetectionAssocTestReverse) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "AssociationDetectionCalculator"
     input_stream: "input_vec_0"
     input_stream: "input_vec_1"
@@ -220,7 +219,7 @@ TEST_F(AssociationDetectionCalculatorTest, DetectionAssocTestReverse) {
         min_similarity_threshold: 0.1
       }
     }
-  )"));
+  )pb"));
 
   // Input Stream 0: det_5.
   auto input_vec_0 = absl::make_unique<std::vector<::mediapipe::Detection>>();
@@ -332,7 +331,7 @@ class AssociationNormRectCalculatorTest : public ::testing::Test {
 };
 
 TEST_F(AssociationNormRectCalculatorTest, NormRectAssocTest) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "AssociationNormRectCalculator"
     input_stream: "input_vec_0"
     input_stream: "input_vec_1"
@@ -343,7 +342,7 @@ TEST_F(AssociationNormRectCalculatorTest, NormRectAssocTest) {
         min_similarity_threshold: 0.1
       }
     }
-  )"));
+  )pb"));
 
   // Input Stream 0: nr_0, nr_1, nr_2.
   auto input_vec_0 =
@@ -386,7 +385,7 @@ TEST_F(AssociationNormRectCalculatorTest, NormRectAssocTest) {
 }
 
 TEST_F(AssociationNormRectCalculatorTest, NormRectAssocTestReverse) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "AssociationNormRectCalculator"
     input_stream: "input_vec_0"
     input_stream: "input_vec_1"
@@ -397,7 +396,7 @@ TEST_F(AssociationNormRectCalculatorTest, NormRectAssocTestReverse) {
         min_similarity_threshold: 0.1
       }
     }
-  )"));
+  )pb"));
 
   // Input Stream 0: nr_5.
   auto input_vec_0 =
@@ -441,7 +440,7 @@ TEST_F(AssociationNormRectCalculatorTest, NormRectAssocTestReverse) {
 }
 
 TEST_F(AssociationNormRectCalculatorTest, NormRectAssocSingleInputStream) {
-  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"(
+  CalculatorRunner runner(ParseTextProtoOrDie<CalculatorGraphConfig::Node>(R"pb(
     calculator: "AssociationNormRectCalculator"
     input_stream: "input_vec"
     output_stream: "output_vec"
@@ -450,7 +449,7 @@ TEST_F(AssociationNormRectCalculatorTest, NormRectAssocSingleInputStream) {
         min_similarity_threshold: 0.1
       }
     }
-  )"));
+  )pb"));
 
   // Input Stream : nr_3, nr_5.
   auto input_vec =

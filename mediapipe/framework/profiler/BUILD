@@ -113,6 +113,7 @@ cc_library(
         "//mediapipe/framework/port:advanced_proto_lite",
         "//mediapipe/framework/port:integral_types",
         "//mediapipe/framework/port:logging",
+        "//mediapipe/framework/port:re2",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
         "//mediapipe/framework/tool:name_util",
@@ -233,7 +234,6 @@ cc_test(
         "//mediapipe/framework:calculator_profile_cc_proto",
         "//mediapipe/framework:test_calculators",
         "//mediapipe/framework/deps:clock",
-        "//mediapipe/framework/deps:message_matchers",
         "//mediapipe/framework/port:advanced_proto",
         "//mediapipe/framework/port:file_helpers",
         "//mediapipe/framework/port:gtest_main",
@@ -246,7 +246,7 @@ cc_test(
         "//mediapipe/framework/tool:simulation_clock",
         "//mediapipe/framework/tool:simulation_clock_executor",
         "//mediapipe/framework/tool:status_util",
-        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/time",
     ],
 )
@@ -285,12 +285,11 @@ cc_library(
         "//mediapipe/framework:mediapipe_internal",
     ],
     deps = [
-        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/flags:flag",
         "//mediapipe/framework/port:logging",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:statusor",
         "//mediapipe/framework/port:status",
-        "@com_google_absl//absl/flags:flag",
         "//mediapipe/framework/deps:file_path",
     ] + select({
         "//conditions:default": [
@@ -298,7 +297,7 @@ cc_library(
         ],
         "//mediapipe:android": [
             "//mediapipe/java/com/google/mediapipe/framework/jni:jni_util",
-            "//mediapipe/util/android/file/base",
+            "//mediapipe/framework/port:file_helpers",
         ],
         "//mediapipe:apple": [
             "//mediapipe/framework/port:file_helpers",

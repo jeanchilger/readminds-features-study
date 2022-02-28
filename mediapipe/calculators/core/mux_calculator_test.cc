@@ -14,7 +14,11 @@
 
 #include <memory>
 
+#include "absl/status/status.h"
+#include "absl/types/optional.h"
 #include "mediapipe/calculators/core/split_vector_calculator.h"
+#include "mediapipe/framework/api2/node.h"
+#include "mediapipe/framework/api2/port.h"
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/calculator_runner.h"
 #include "mediapipe/framework/port/gtest.h"
@@ -31,7 +35,7 @@ namespace {
 
 // Graph with default input stream handler, and the input selection is driven
 // by an input stream. All MuxCalculator inputs are present at each timestamp.
-constexpr char kTestGraphConfig1[] = R"proto(
+constexpr char kTestGraphConfig1[] = R"pb(
   input_stream: "input"
   output_stream: "test_output"
   node {
@@ -60,12 +64,12 @@ constexpr char kTestGraphConfig1[] = R"proto(
     output_stream: "OUTPUT:test_output"
     input_stream_handler { input_stream_handler: "DefaultInputStreamHandler" }
   }
-)proto";
+)pb";
 
 // Graph with default input stream handler, and the input selection is driven
 // by an input side packet. All MuxCalculator inputs are present at each
 // timestamp.
-constexpr char kTestGraphConfig2[] = R"proto(
+constexpr char kTestGraphConfig2[] = R"pb(
   input_side_packet: "input_selector"
   input_stream: "input"
   output_stream: "test_output"
@@ -93,12 +97,12 @@ constexpr char kTestGraphConfig2[] = R"proto(
     output_stream: "OUTPUT:test_output"
     input_stream_handler { input_stream_handler: "DefaultInputStreamHandler" }
   }
-)proto";
+)pb";
 
 // Graph with mux input stream handler, and the input selection is driven
 // by an input stream. Only one MuxCalculator input is present at each
 // timestamp.
-constexpr char kTestGraphConfig3[] = R"proto(
+constexpr char kTestGraphConfig3[] = R"pb(
   input_stream: "input"
   output_stream: "test_output"
   node {
@@ -117,7 +121,7 @@ constexpr char kTestGraphConfig3[] = R"proto(
     input_stream: "SELECT:input_select"
     output_stream: "OUTPUT:test_output"
   }
-)proto";
+)pb";
 
 constexpr char kOutputName[] = "test_output";
 constexpr char kInputName[] = "input";
@@ -134,10 +138,9 @@ void RunGraph(const std::string& graph_config_proto,
               const std::string& input_stream_name, int num_input_packets,
               std::function<Packet(int)> input_fn,
               const std::string& output_stream_name,
-              std::function<::mediapipe::Status(const Packet&)> output_fn) {
+              std::function<absl::Status(const Packet&)> output_fn) {
   CalculatorGraphConfig config =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(
-          graph_config_proto);
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(graph_config_proto);
   CalculatorGraph graph;
   MP_ASSERT_OK(graph.Initialize(config));
   MP_ASSERT_OK(graph.ObserveOutputStream(output_stream_name, output_fn));
@@ -166,9 +169,9 @@ TEST(MuxCalculatorTest, InputStreamSelector_DefaultInputStreamHandler) {
   // Output and handling.
   std::vector<int> output;
   // This function collects the output from the packet.
-  auto output_fn = [&output](const Packet& p) -> ::mediapipe::Status {
+  auto output_fn = [&output](const Packet& p) -> absl::Status {
     output.push_back(p.Get<int>());
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   };
 
   RunGraph(kTestGraphConfig1, {}, kInputName, input_packets.size(), input_fn,
@@ -192,9 +195,9 @@ TEST(MuxCalculatorTest, InputSidePacketSelector_DefaultInputStreamHandler) {
   // Output and handling.
   std::vector<int> output;
   // This function collects the output from the packet.
-  auto output_fn = [&output](const Packet& p) -> ::mediapipe::Status {
+  auto output_fn = [&output](const Packet& p) -> absl::Status {
     output.push_back(p.Get<int>());
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   };
 
   RunGraph(kTestGraphConfig2, {{kInputSelector, MakePacket<int>(0)}},
@@ -226,9 +229,9 @@ TEST(MuxCalculatorTest, InputStreamSelector_MuxInputStreamHandler) {
   // Output and handling.
   std::vector<int> output;
   // This function collects the output from the packet.
-  auto output_fn = [&output](const Packet& p) -> ::mediapipe::Status {
+  auto output_fn = [&output](const Packet& p) -> absl::Status {
     output.push_back(p.Get<int>());
-    return ::mediapipe::OkStatus();
+    return absl::OkStatus();
   };
 
   RunGraph(kTestGraphConfig3, {}, kInputName, input_packets.size(), input_fn,
@@ -236,7 +239,7 @@ TEST(MuxCalculatorTest, InputStreamSelector_MuxInputStreamHandler) {
   EXPECT_EQ(output, input_packets);
 }
 
-constexpr char kDualInputGraphConfig[] = R"proto(
+constexpr char kDualInputGraphConfig[] = R"pb(
   input_stream: "input_0"
   input_stream: "input_1"
   input_stream: "input_select"
@@ -248,11 +251,11 @@ constexpr char kDualInputGraphConfig[] = R"proto(
     input_stream: "SELECT:input_select"
     output_stream: "OUTPUT:test_output"
   }
-)proto";
+)pb";
 
 TEST(MuxCalculatorTest, DiscardSkippedInputs_MuxInputStreamHandler) {
   CalculatorGraphConfig config =
-      ::mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(
           kDualInputGraphConfig);
   CalculatorGraph graph;
   MP_ASSERT_OK(graph.Initialize(config));
@@ -261,7 +264,7 @@ TEST(MuxCalculatorTest, DiscardSkippedInputs_MuxInputStreamHandler) {
   MP_ASSERT_OK(
       graph.ObserveOutputStream("test_output", [&output](const Packet& p) {
         output = p.Get<std::shared_ptr<int>>();
-        return ::mediapipe::OkStatus();
+        return absl::OkStatus();
       }));
 
   MP_ASSERT_OK(graph.StartRun({}));
@@ -302,4 +305,99 @@ TEST(MuxCalculatorTest, DiscardSkippedInputs_MuxInputStreamHandler) {
 }
 
 }  // namespace
+
+class PassThroughAndTsBoundUpdateNode : public mediapipe::api2::Node {
+ public:
+  static constexpr mediapipe::api2::Input<int> kInValue{"VALUE"};
+  static constexpr mediapipe::api2::Output<int> kOutValue{"VALUE"};
+  static constexpr mediapipe::api2::Output<int> kOutTsBoundUpdate{
+      "TS_BOUND_UPDATE"};
+  MEDIAPIPE_NODE_CONTRACT(kInValue, kOutValue, kOutTsBoundUpdate);
+
+  absl::Status Process(CalculatorContext* cc) override {
+    kOutValue(cc).Send(kInValue(cc));
+    kOutTsBoundUpdate(cc).SetNextTimestampBound(
+        cc->InputTimestamp().NextAllowedInStream());
+    return absl::OkStatus();
+  }
+};
+MEDIAPIPE_REGISTER_NODE(PassThroughAndTsBoundUpdateNode);
+
+class ToOptionalNode : public mediapipe::api2::Node {
+ public:
+  static constexpr mediapipe::api2::Input<int> kTick{"TICK"};
+  static constexpr mediapipe::api2::Input<int> kInValue{"VALUE"};
+  static constexpr mediapipe::api2::Output<absl::optional<int>> kOutValue{
+      "OUTPUT"};
+  MEDIAPIPE_NODE_CONTRACT(kTick, kInValue, kOutValue);
+
+  absl::Status Process(CalculatorContext* cc) override {
+    if (kInValue(cc).IsEmpty()) {
+      kOutValue(cc).Send(absl::nullopt);
+    } else {
+      kOutValue(cc).Send({kInValue(cc).Get()});
+    }
+    return absl::OkStatus();
+  }
+};
+MEDIAPIPE_REGISTER_NODE(ToOptionalNode);
+
+namespace {
+
+TEST(MuxCalculatorTest, HandleTimestampBoundUpdates) {
+  CalculatorGraphConfig config =
+      mediapipe::ParseTextProtoOrDie<CalculatorGraphConfig>(
+          R"pb(
+            input_stream: "select"
+            node {
+              calculator: "PassThroughAndTsBoundUpdateNode"
+              input_stream: "VALUE:select"
+              output_stream: "VALUE:select_ps"
+              output_stream: "TS_BOUND_UPDATE:ts_bound_update"
+            }
+            node {
+              calculator: "MuxCalculator"
+              input_stream: "INPUT:0:select_ps"
+              input_stream: "INPUT:1:ts_bound_update"
+              input_stream: "SELECT:select"
+              output_stream: "OUTPUT:select_or_ts_bound_update"
+            }
+            node {
+              calculator: "ToOptionalNode"
+              input_stream: "TICK:select"
+              input_stream: "VALUE:select_or_ts_bound_update"
+              output_stream: "OUTPUT:output"
+            }
+          )pb");
+  std::vector<Packet> output_packets;
+  tool::AddVectorSink("output", &config, &output_packets);
+
+  CalculatorGraph graph;
+  MP_ASSERT_OK(graph.Initialize(config));
+  MP_ASSERT_OK(graph.StartRun({}));
+
+  auto send_value_fn = [&](int value, Timestamp ts) -> absl::Status {
+    MP_RETURN_IF_ERROR(
+        graph.AddPacketToInputStream("select", MakePacket<int>(value).At(ts)));
+    return graph.WaitUntilIdle();
+  };
+
+  MP_ASSERT_OK(send_value_fn(0, Timestamp(1)));
+  ASSERT_EQ(output_packets.size(), 1);
+  EXPECT_EQ(output_packets[0].Get<absl::optional<int>>(), 0);
+
+  MP_ASSERT_OK(send_value_fn(1, Timestamp(2)));
+  ASSERT_EQ(output_packets.size(), 2);
+  EXPECT_EQ(output_packets[1].Get<absl::optional<int>>(), absl::nullopt);
+
+  MP_ASSERT_OK(send_value_fn(0, Timestamp(3)));
+  ASSERT_EQ(output_packets.size(), 3);
+  EXPECT_EQ(output_packets[2].Get<absl::optional<int>>(), 0);
+
+  MP_ASSERT_OK(graph.CloseAllInputStreams());
+  MP_ASSERT_OK(graph.WaitUntilDone());
+}
+
+}  // namespace
+
 }  // namespace mediapipe

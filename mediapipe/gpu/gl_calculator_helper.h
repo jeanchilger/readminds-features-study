@@ -18,6 +18,7 @@
 #include "absl/memory/memory.h"
 #include "mediapipe/framework/calculator_context.h"
 #include "mediapipe/framework/calculator_contract.h"
+#include "mediapipe/framework/formats/image.h"
 #include "mediapipe/framework/formats/image_frame.h"
 #include "mediapipe/framework/packet.h"
 #include "mediapipe/framework/packet_set.h"
@@ -28,26 +29,12 @@
 #include "mediapipe/gpu/gpu_buffer.h"
 #include "mediapipe/gpu/graph_support.h"
 
-#ifdef __APPLE__
-#include <CoreVideo/CoreVideo.h>
-
-#include "mediapipe/objc/CFHolder.h"
-#endif  // __APPLE__
-
 namespace mediapipe {
 
 class GlCalculatorHelperImpl;
 class GlTexture;
 class GpuResources;
 struct GpuSharedData;
-
-#ifdef __APPLE__
-#if TARGET_OS_OSX
-typedef CVOpenGLTextureRef CVTextureType;
-#else
-typedef CVOpenGLESTextureRef CVTextureType;
-#endif  // TARGET_OS_OSX
-#endif  // __APPLE__
 
 using ImageFrameSharedPtr = std::shared_ptr<ImageFrame>;
 
@@ -68,7 +55,7 @@ class GlCalculatorHelper {
   ~GlCalculatorHelper();
 
   // Call Open from the Open method of a calculator to initialize the helper.
-  ::mediapipe::Status Open(CalculatorContext* cc);
+  absl::Status Open(CalculatorContext* cc);
 
   // Can be used to initialize the helper outside of a calculator. Useful for
   // testing.
@@ -77,33 +64,31 @@ class GlCalculatorHelper {
 
   // This method can be called from GetContract to set up the needed GPU
   // resources.
-  static ::mediapipe::Status UpdateContract(CalculatorContract* cc);
+  static absl::Status UpdateContract(CalculatorContract* cc);
 
   // This method can be called from FillExpectations to set the correct types
   // for the shared GL input side packet(s).
-  static ::mediapipe::Status SetupInputSidePackets(
-      PacketTypeSet* input_side_packets);
+  static absl::Status SetupInputSidePackets(PacketTypeSet* input_side_packets);
 
   // Execute the provided function within the helper's GL context. On some
   // platforms, this may be run on a different thread; however, this method
   // will still wait for the function to finish executing before returning.
   // The status result from the function is passed on to the caller.
-  ::mediapipe::Status RunInGlContext(
-      std::function<::mediapipe::Status(void)> gl_func);
+  absl::Status RunInGlContext(std::function<absl::Status(void)> gl_func);
 
   // Convenience version of RunInGlContext for arguments with a void result
-  // type. As with the ::mediapipe::Status version, this also waits for the
+  // type. As with the absl::Status version, this also waits for the
   // function to finish executing before returning.
   //
   // Implementation note: we cannot use a std::function<void(void)> argument
   // here, because that would break passing in a lambda that returns a status;
   // e.g.:
-  //   RunInGlContext([]() -> ::mediapipe::Status { ... });
+  //   RunInGlContext([]() -> absl::Status { ... });
   //
   // The reason is that std::function<void(...)> allows the implicit conversion
   // of a callable with any result type, as long as the argument types match.
   // As a result, the above lambda would be implicitly convertible to both
-  // std::function<::mediapipe::Status(void)> and std::function<void(void)>, and
+  // std::function<absl::Status(void)> and std::function<void(void)>, and
   // the invocation would be ambiguous.
   //
   // Therefore, instead of using std::function<void(void)>, we use a template
@@ -113,7 +98,7 @@ class GlCalculatorHelper {
   void RunInGlContext(T f) {
     RunInGlContext([f] {
       f();
-      return ::mediapipe::OkStatus();
+      return absl::OkStatus();
     }).IgnoreError();
   }
 
@@ -122,23 +107,35 @@ class GlCalculatorHelper {
   // where it is supported (iOS, for now) they take advantage of memory sharing
   // between the CPU and GPU, avoiding memory copies.
 
-  // Creates a texture representing an input frame, and manages sync token.
+  // Gives access to an input frame as an OpenGL texture for reading (sampling).
+  //
+  // IMPORTANT: the returned GlTexture should be treated as a short-term view
+  // into the frame (typically for the duration of a Process call). Do not store
+  // it as a member in your calculator. If you need to keep a frame around,
+  // store the GpuBuffer instead, and call CreateSourceTexture again on each
+  // Process call.
+  //
+  // TODO: rename this; the use of "Create" makes this sound more expensive than
+  // it is.
   GlTexture CreateSourceTexture(const GpuBuffer& pixel_buffer);
-  GlTexture CreateSourceTexture(const ImageFrame& image_frame);
+  GlTexture CreateSourceTexture(const mediapipe::Image& image);
 
-#ifdef __APPLE__
-  // Creates a texture from a plane of a planar buffer.
+  // Gives read access to a plane of a planar buffer.
   // The plane index is zero-based. The number of planes depends on the
   // internal format of the buffer.
+  // Note: multi-plane support is not available on all platforms.
   GlTexture CreateSourceTexture(const GpuBuffer& pixel_buffer, int plane);
-#endif
+
+  // Convenience function for converting an ImageFrame to GpuBuffer and then
+  // accessing it as a texture.
+  GlTexture CreateSourceTexture(const ImageFrame& image_frame);
 
   // Extracts GpuBuffer dimensions without creating a texture.
   ABSL_DEPRECATED("Use width and height methods on GpuBuffer instead")
   void GetGpuBufferDimensions(const GpuBuffer& pixel_buffer, int* width,
                               int* height);
 
-  // Creates a texture representing an output frame, and manages sync token.
+  // Gives access to an OpenGL texture for writing (rendering) a new frame.
   // TODO: This should either return errors or a status.
   GlTexture CreateDestinationTexture(
       int output_width, int output_height,
@@ -152,6 +149,8 @@ class GlCalculatorHelper {
   void BindFramebuffer(const GlTexture& dst);
 
   GlContext& GetGlContext() const;
+
+  GlVersion GetGlVersion() const;
 
   // Check if the calculator helper has been previously initialized.
   bool Initialized() { return impl_ != nullptr; }
@@ -172,14 +171,12 @@ class GlCalculatorHelper {
 class GlTexture {
  public:
   GlTexture() {}
-  GlTexture(GLuint name, int width, int height);
-
   ~GlTexture() { Release(); }
 
-  int width() const { return width_; }
-  int height() const { return height_; }
-  GLenum target() const { return target_; }
-  GLuint name() const { return name_; }
+  int width() const { return view_.width(); }
+  int height() const { return view_.height(); }
+  GLenum target() const { return view_.target(); }
+  GLuint name() const { return view_.name(); }
 
   // Returns a buffer that can be sent to another calculator.
   // & manages sync token
@@ -188,26 +185,12 @@ class GlTexture {
   std::unique_ptr<T> GetFrame() const;
 
   // Releases texture memory & manages sync token
-  void Release();
+  void Release() { view_.Release(); }
 
  private:
+  explicit GlTexture(GlTextureView view) : view_(std::move(view)) {}
   friend class GlCalculatorHelperImpl;
-  GlCalculatorHelperImpl* helper_impl_ = nullptr;
-  GLuint name_ = 0;
-  int width_ = 0;
-  int height_ = 0;
-  GLenum target_ = GL_TEXTURE_2D;
-
-#ifdef MEDIAPIPE_GPU_BUFFER_USE_CV_PIXEL_BUFFER
-  // For CVPixelBufferRef-based rendering
-  CFHolder<CVTextureType> cv_texture_;
-#else
-  // Keeps track of whether this texture mapping is for read access, so that
-  // we can create a consumer sync point when releasing it.
-  bool for_reading_ = false;
-#endif
-  GpuBuffer gpu_buffer_;
-  int plane_ = 0;
+  GlTextureView view_;
 };
 
 // Returns the entry with the given tag if the collection uses tags, with the

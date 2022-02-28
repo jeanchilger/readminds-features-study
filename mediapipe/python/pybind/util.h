@@ -19,6 +19,7 @@
 #include "mediapipe/framework/port/file_helpers.h"
 #include "mediapipe/framework/port/status.h"
 #include "mediapipe/framework/timestamp.h"
+#include "pybind11/gil.h"
 #include "pybind11/pybind11.h"
 
 namespace mediapipe {
@@ -45,10 +46,17 @@ inline PyObject* StatusCodeToPyError(const ::absl::StatusCode& code) {
   }
 }
 
-inline void RaisePyErrorIfNotOk(const mediapipe::Status& status) {
+inline void RaisePyErrorIfNotOk(const absl::Status& status,
+                                bool acquire_gil = false) {
   if (!status.ok()) {
-    throw RaisePyError(StatusCodeToPyError(status.code()),
-                       status.message().data());
+    if (acquire_gil) {
+      py::gil_scoped_acquire acquire;
+      throw RaisePyError(StatusCodeToPyError(status.code()),
+                         status.message().data());
+    } else {
+      throw RaisePyError(StatusCodeToPyError(status.code()),
+                         status.message().data());
+    }
   }
 }
 
@@ -97,7 +105,8 @@ inline ::mediapipe::CalculatorGraphConfig ReadCalculatorGraphConfigFromFile(
     throw RaisePyError(PyExc_FileNotFoundError, status.message().data());
   }
   std::string graph_config_string;
-  RaisePyErrorIfNotOk(file::GetContents(file_name, &graph_config_string));
+  RaisePyErrorIfNotOk(file::GetContents(file_name, &graph_config_string,
+                                        /*read_as_binary=*/true));
   if (!graph_config_proto.ParseFromArray(graph_config_string.c_str(),
                                          graph_config_string.length())) {
     throw RaisePyError(

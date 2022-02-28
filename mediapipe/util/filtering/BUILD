@@ -34,6 +34,19 @@ cc_test(
     deps = [
         ":low_pass_filter",
         "//mediapipe/framework/port:gtest_main",
+        "@com_google_absl//absl/memory",
+    ],
+)
+
+cc_library(
+    name = "one_euro_filter",
+    srcs = ["one_euro_filter.cc"],
+    hdrs = ["one_euro_filter.h"],
+    deps = [
+        ":low_pass_filter",
+        "//mediapipe/framework/port:logging",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/time",
     ],
 )
 
@@ -56,6 +69,7 @@ cc_test(
         ":relative_velocity_filter",
         "//mediapipe/framework/port:gtest_main",
         "//mediapipe/framework/port:logging",
+        "@com_google_absl//absl/memory",
         "@com_google_absl//absl/time",
     ],
 )

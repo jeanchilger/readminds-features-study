@@ -59,9 +59,10 @@ objc_library(
     hdrs = [
         "IrisTrackingViewController.h",
     ],
+    copts = ["-std=c++17"],
     data = [
         "//mediapipe/graphs/iris_tracking:iris_tracking_gpu.binarypb",
-        "//mediapipe/modules/face_detection:face_detection_front.tflite",
+        "//mediapipe/modules/face_detection:face_detection_short_range.tflite",
         "//mediapipe/modules/face_landmark:face_landmark.tflite",
         "//mediapipe/modules/iris_landmark:iris_landmark.tflite",
     ],

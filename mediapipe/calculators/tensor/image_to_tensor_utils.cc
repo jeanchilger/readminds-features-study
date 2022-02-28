@@ -25,23 +25,23 @@ namespace mediapipe {
 RotatedRect GetRoi(int input_width, int input_height,
                    absl::optional<mediapipe::NormalizedRect> norm_rect) {
   if (norm_rect) {
-    return {.center_x = norm_rect->x_center() * input_width,
-            .center_y = norm_rect->y_center() * input_height,
-            .width = norm_rect->width() * input_width,
-            .height = norm_rect->height() * input_height,
-            .rotation = norm_rect->rotation()};
+    return {/*center_x=*/norm_rect->x_center() * input_width,
+            /*center_y =*/norm_rect->y_center() * input_height,
+            /*width =*/norm_rect->width() * input_width,
+            /*height =*/norm_rect->height() * input_height,
+            /*rotation =*/norm_rect->rotation()};
   }
-  return {.center_x = 0.5f * input_width,
-          .center_y = 0.5f * input_height,
-          .width = static_cast<float>(input_width),
-          .height = static_cast<float>(input_height),
-          .rotation = 0};
+  return {/*center_x=*/0.5f * input_width,
+          /*center_y =*/0.5f * input_height,
+          /*width =*/static_cast<float>(input_width),
+          /*height =*/static_cast<float>(input_height),
+          /*rotation =*/0};
 }
 
-::mediapipe::StatusOr<std::array<float, 4>> PadRoi(int input_tensor_width,
-                                                   int input_tensor_height,
-                                                   bool keep_aspect_ratio,
-                                                   RotatedRect* roi) {
+absl::StatusOr<std::array<float, 4>> PadRoi(int input_tensor_width,
+                                            int input_tensor_height,
+                                            bool keep_aspect_ratio,
+                                            RotatedRect* roi) {
   if (!keep_aspect_ratio) {
     return std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f};
   }
@@ -76,7 +76,7 @@ RotatedRect GetRoi(int input_width, int input_height,
                               horizontal_padding, vertical_padding};
 }
 
-::mediapipe::StatusOr<ValueTransformation> GetValueRangeTransformation(
+absl::StatusOr<ValueTransformation> GetValueRangeTransformation(
     float from_range_min, float from_range_max, float to_range_min,
     float to_range_max) {
   RET_CHECK_LT(from_range_min, from_range_max)
@@ -169,6 +169,47 @@ void GetRotatedSubRectToRectTransformMatrix(const RotatedRect& sub_rect,
   // row 4
   matrix[12] = 0.0f;
   matrix[13] = 0.0f;
+  matrix[14] = 0.0f;
+  matrix[15] = 1.0f;
+}
+
+void GetTransposedRotatedSubRectToRectTransformMatrix(
+    const RotatedRect& sub_rect, int rect_width, int rect_height,
+    bool flip_horizontaly, std::array<float, 16>* matrix_ptr) {
+  std::array<float, 16>& matrix = *matrix_ptr;
+  // See comments in GetRotatedSubRectToRectTransformMatrix for detailed
+  // calculations.
+  const float a = sub_rect.width;
+  const float b = sub_rect.height;
+  const float flip = flip_horizontaly ? -1 : 1;
+  const float c = std::cos(sub_rect.rotation);
+  const float d = std::sin(sub_rect.rotation);
+  const float e = sub_rect.center_x;
+  const float f = sub_rect.center_y;
+  const float g = 1.0f / rect_width;
+  const float h = 1.0f / rect_height;
+
+  // row 1 (indices 0,4,8,12 from non-transposed fcn)
+  matrix[0] = a * c * flip * g;
+  matrix[1] = a * d * flip * h;
+  matrix[2] = 0.0f;
+  matrix[3] = 0.0f;
+
+  // row 2 (indices 1,5,9,13 from non-transposed fcn)
+  matrix[4] = -b * d * g;
+  matrix[5] = b * c * h;
+  matrix[6] = 0.0f;
+  matrix[7] = 0.0f;
+
+  // row 3 (indices 2,6,10,14 from non-transposed fcn)
+  matrix[8] = 0.0f;
+  matrix[9] = 0.0f;
+  matrix[10] = a * g;
+  matrix[11] = 0.0f;
+
+  // row 4 (indices 3,7,11,15 from non-transposed fcn)
+  matrix[12] = (-0.5f * a * c * flip + 0.5f * b * d + e) * g;
+  matrix[13] = (-0.5f * b * c - 0.5f * a * d * flip + f) * h;
   matrix[14] = 0.0f;
   matrix[15] = 1.0f;
 }

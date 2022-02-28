@@ -2,19 +2,25 @@
 # executed on CPU.) This graph tries to skip face detection as much as possible
 # by using previously detected/predicted landmarks for new images.
 #
-# It is required that "face_detection_front.tflite" is available at
-# "mediapipe/modules/face_detection/face_detection_front.tflite"
+# It is required that "face_detection_short_range.tflite" is available at
+# "mediapipe/modules/face_detection/face_detection_short_range.tflite"
 # path during execution.
 #
 # It is required that "face_landmark.tflite" is available at
 # "mediapipe/modules/face_landmark/face_landmark.tflite"
-# path during execution.
+# path during execution if `with_attention` is not set or set to `false`.
+#
+# It is required that "face_landmark_with_attention.tflite" is available at
+# "mediapipe/modules/face_landmark/face_landmark_with_attention.tflite"
+# path during execution if `with_attention` is set to `true`.
 #
 # EXAMPLE:
 #   node {
 #     calculator: "FaceLandmarkFrontCpu"
 #     input_stream: "IMAGE:image"
 #     input_side_packet: "NUM_FACES:num_faces"
+#     input_side_packet: "USE_PREV_LANDMARKS:use_prev_landmarks"
+#     input_side_packet: "WITH_ATTENTION:with_attention"
 #     output_stream: "LANDMARKS:multi_face_landmarks"
 #   }
 
@@ -26,9 +32,14 @@ input_stream: "IMAGE:image"
 # Max number of faces to detect/track. (int)
 input_side_packet: "NUM_FACES:num_faces"
 
-# Whether face detection can be skipped when face regions can already be
-# approximated from face landmarks on the previous frame.
-input_side_packet: "CAN_SKIP_DETECTION:can_skip_detection"
+# Whether landmarks on the previous image should be used to help localize
+# landmarks on the current image. (bool)
+input_side_packet: "USE_PREV_LANDMARKS:use_prev_landmarks"
+
+# Whether to run face mesh model with attention on lips and eyes. (bool)
+# Attention provides more accuracy on lips and eye regions as well as iris
+# landmarks.
+input_side_packet: "WITH_ATTENTION:with_attention"
 
 # Collection of detected/predicted faces, each represented as a list of 468 face
 # landmarks. (std::vector<NormalizedLandmarkList>)
@@ -48,32 +59,37 @@ output_stream: "ROIS_FROM_LANDMARKS:face_rects_from_landmarks"
 # (std::vector<NormalizedRect>)
 output_stream: "ROIS_FROM_DETECTIONS:face_rects_from_detections"
 
+# When the optional input side packet "use_prev_landmarks" is either absent or
+# set to true, uses the landmarks on the previous image to help localize
+# landmarks on the current image.
+node {
+  calculator: "GateCalculator"
+  input_side_packet: "ALLOW:use_prev_landmarks"
+  input_stream: "prev_face_rects_from_landmarks"
+  output_stream: "gated_prev_face_rects_from_landmarks"
+  options: {
+    [mediapipe.GateCalculatorOptions.ext] {
+      allow: true
+    }
+  }
+}
+
 # Determines if an input vector of NormalizedRect has a size greater than or
 # equal to the provided num_faces.
 node {
   calculator: "NormalizedRectVectorHasMinSizeCalculator"
-  input_stream: "ITERABLE:prev_face_rects_from_landmarks"
+  input_stream: "ITERABLE:gated_prev_face_rects_from_landmarks"
   input_side_packet: "num_faces"
   output_stream: "prev_has_enough_faces"
 }
 
-# Drops the incoming image if FaceLandmarkCpu was able to identify face presence
-# in the previous image and skipping face detection is enabled. Otherwise,
-# passes the incoming image through to trigger a new round of face detection
-# in FaceDetectionFrontCpu.
-node {
-  calculator: "LogicCalculator"
-  options: {
-    [mediapipe.LogicCalculatorOptions.ext] { op: AND }
-  }
-  input_side_packet: "can_skip_detection"
-  input_stream: "prev_has_enough_faces"
-  output_stream: "skip_detection"
-}
+# Drops the incoming image if enough faces have already been identified from the
+# previous image. Otherwise, passes the incoming image through to trigger a new
+# round of face detection.
 node {
   calculator: "GateCalculator"
   input_stream: "image"
-  input_stream: "DISALLOW:skip_detection"
+  input_stream: "DISALLOW:prev_has_enough_faces"
   output_stream: "gated_image"
   options: {
     [mediapipe.GateCalculatorOptions.ext] {
@@ -81,16 +97,10 @@ node {
     }
   }
 }
-node {
-  calculator: "GateCalculator"
-  input_stream: "prev_face_rects_from_landmarks"
-  input_stream: "ALLOW:skip_detection"
-  output_stream: "gated_prev_face_rects_from_landmarks"
-}
 
 # Detects faces.
 node {
-  calculator: "FaceDetectionFrontCpu"
+  calculator: "FaceDetectionShortRangeCpu"
   input_stream: "IMAGE:gated_image"
   output_stream: "DETECTIONS:all_face_detections"
 }
@@ -149,8 +159,8 @@ node {
 # overlapping regions based on the specified min_similarity_threshold.
 node {
   calculator: "AssociationNormRectCalculator"
-  input_stream: "gated_prev_face_rects_from_landmarks"
   input_stream: "face_rects_from_detections"
+  input_stream: "gated_prev_face_rects_from_landmarks"
   output_stream: "face_rects"
   options: {
     [mediapipe.AssociationCalculatorOptions.ext] {
@@ -187,6 +197,7 @@ node {
   calculator: "FaceLandmarkCpu"
   input_stream: "IMAGE:landmarks_loop_image"
   input_stream: "ROI:face_rect"
+  input_side_packet: "WITH_ATTENTION:with_attention"
   output_stream: "LANDMARKS:face_landmarks"
 }
 
