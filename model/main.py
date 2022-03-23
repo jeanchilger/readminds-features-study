@@ -262,6 +262,7 @@ def run_subject_rnn_experiment(
             np.mean(scores, axis=0)[1] * 100))
 
 
+# TODO(@Richard): Base on this
 def run_subject_lstm_experiment(
         compiled_data, feature_headers, label_header, testable_subjects,
         results_path="results/model", subject_header="subject",
@@ -383,6 +384,13 @@ def run_feature_group_experiment(
                 verbose=verbose)
 
 
+# TODO(@Richard): Implement SVM
+def run_svm_experiment(
+        compiled_data, base_facial_features, label_header,
+        testable_subjects, results_path, subject_header="subject",
+        early_stop_patience=100, verbose=0):
+    pass
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
@@ -466,7 +474,12 @@ if __name__ == "__main__":
 
     elif train_strategy == "feature-group":
         console.error("Running 'Feature Group' training strategy.", bold=True)
-
+        
         run_feature_group_experiment(
                 compiled_data, base_facial_features, label_header,
+                testable_subjects, results_path)
+        
+    elif train_strategy == "svm":
+	    run_svm_experiment(
+				compiled_data, feature_headers, label_header,
                 testable_subjects, results_path)
